@@ -29,7 +29,9 @@
 .session { display: grid; gap: 16px; }
 .q-card { display: grid; gap: 12px; padding: 20px 22px; }
 .q-prompt { font-size: 17px; line-height: 1.5; text-wrap: pretty; white-space: pre-wrap; }
-.phase { display: grid; gap: 10px; padding: 18px 22px 22px; }
+/* minmax(0, 1fr): a default auto column grows to its content's max width, and the picker's
+   measured padding would then feed back into it. Pin the column to the card. */
+.phase { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; padding: 18px 22px 22px; }
 .phase h3 { font-size: 16px; font-weight: 600; }
 .phase .why { font-size: 13px; color: var(--fg2); text-wrap: pretty; }
 .answer { width: 100%; min-height: 220px; padding: 14px 16px; border-radius: 16px; border: 1px solid var(--field-line); background: var(--field); color: var(--fg); line-height: 1.55; font-size: 15px; resize: vertical; }
@@ -42,12 +44,12 @@
 .choice input { margin-block-start: 3px; accent-color: var(--ink); }
 
 /* ---- detented confidence picker ---- */
-.picker { position: relative; user-select: none; padding-block: 4px; }
+.picker { position: relative; user-select: none; padding-block: 4px; min-width: 0; max-width: 100%; }
 .picker-readout { display: flex; align-items: baseline; justify-content: center; gap: 6px; font-variant-numeric: tabular-nums; font-size: 44px; font-weight: 650; letter-spacing: -.03em; line-height: 1; transition: color .18s ease; }
 .picker-readout small { font-size: 14px; font-weight: 500; color: var(--fg2); }
 .picker.untouched .picker-readout { color: var(--fg3); }
 .picker-caption { text-align: center; font-size: 13px; color: var(--fg2); min-height: 1.2em; margin-block: 6px 10px; }
-.picker-track { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; padding: 6px 0 2px; cursor: grab; border-radius: 12px;
+.picker-track { display: flex; width: 100%; box-sizing: border-box; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; padding: 6px 0 2px; cursor: grab; border-radius: 12px;
   -webkit-mask-image: linear-gradient(to right, transparent, #000 12%, #000 88%, transparent); mask-image: linear-gradient(to right, transparent, #000 12%, #000 88%, transparent); }
 .picker-track::-webkit-scrollbar { display: none; }
 .picker-track:active { cursor: grabbing; }
@@ -176,3 +178,7 @@
 
 /* The language control has four options and wraps on narrow sheets rather than overflowing. */
 .seg.seg-wrap { flex-wrap: wrap; }
+
+/* Every single-column card grid is pinned to its container. A default auto column grows to its
+   content's max width, which let a measured picker widen its own card (see .phase). */
+.session, .q-card, .result, .picker-wrap, .doc, .form-stack, .pad, .stack { grid-template-columns: minmax(0, 1fr); }

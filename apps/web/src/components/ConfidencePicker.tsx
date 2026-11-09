@@ -18,8 +18,11 @@ export function ConfidencePicker({ value, onChange, label }: { value: number | n
   const { t } = useT();
   const id = useId();
   const track = useRef<HTMLDivElement>(null);
+  const wrap = useRef<HTMLDivElement>(null);
   const [touched, setTouched] = useState(value !== null);
   const [shown, setShown] = useState(value ?? 50);
+  const shownRef = useRef(shown);
+  shownRef.current = shown;
   const ready = useRef(false);
   const stopW = useRef(34);
 
@@ -28,13 +31,21 @@ export function ConfidencePicker({ value, onChange, label }: { value: number | n
     if (!el) return;
     const first = el.querySelector<HTMLElement>(".picker-stop");
     stopW.current = first?.getBoundingClientRect().width || 34;
-    const pad = Math.max(0, (el.clientWidth - stopW.current) / 2);
-    el.style.paddingLeft = el.style.paddingRight = `${pad}px`;
+    // Measure the wrapper, not the track: the track's own padding would otherwise feed back
+    // into the next measurement. Re-centre on resize so the needle stays over the chosen stop.
+    const fit = () => {
+      const w = wrap.current?.clientWidth ?? el.clientWidth;
+      const pad = Math.max(0, (w - stopW.current) / 2);
+      el.style.paddingLeft = el.style.paddingRight = `${pad}px`;
+    };
+    fit();
+    const ro = new ResizeObserver(() => { fit(); el.scrollTo({ left: (shownRef.current / STEP) * stopW.current }); });
+    if (wrap.current) ro.observe(wrap.current);
     el.scrollTo({ left: ((value ?? 50) / STEP) * stopW.current });
     // The programmatic scroll above fires a scroll event; ignore it, or the picker would count
     // itself as touched before anything moved.
     const t = requestAnimationFrame(() => requestAnimationFrame(() => { ready.current = true; }));
-    return () => cancelAnimationFrame(t);
+    return () => { cancelAnimationFrame(t); ro.disconnect(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -59,7 +70,7 @@ export function ConfidencePicker({ value, onChange, label }: { value: number | n
   };
 
   return (
-    <div className={`picker${touched ? "" : " untouched"}`}>
+    <div ref={wrap} className={`picker${touched ? "" : " untouched"}`}>
       <div className="picker-readout" aria-live="polite" id={`${id}-out`}>
         <span>{touched ? shown : "—"}</span>
         <small>{touched ? "%" : ""}</small>
