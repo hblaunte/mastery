@@ -74,7 +74,7 @@ function readSheet(xml: string, shared: string[], name: string): Sheet {
   return { name, rows, totalRows, totalCols };
 }
 
-export function extractXlsx(name: string, bytes: Uint8Array, fail: (warning: string) => Extracted, fallbackTitle: string): Extracted {
+export function extractXlsx(bytes: Uint8Array, fail: (warning: string) => Extracted, fallbackTitle: string): Extracted {
   const zip = openZip(bytes);
   if (!zip) return fail("This file is not a valid .xlsx (the archive could not be opened). Re-save it from Excel and try again.");
   const workbook = zipText(zip, "xl/workbook.xml");

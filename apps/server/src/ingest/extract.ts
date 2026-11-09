@@ -1,16 +1,20 @@
 /**
  * Turn an uploaded file or a URL into text the chunker can split.
  *
- * extractFile never throws: a file we cannot read comes back with text "" and a
- * `warning` the learner can act on. extractUrl throws UrlError for problems with the
- * URL itself (refused host, unreachable, non-2xx, too large) and otherwise behaves like
+ * extractFile never throws: a file we cannot read comes back with text "" (or markers only),
+ * method "none" and a `warning` the learner can act on. extractUrl throws UrlError for problems
+ * with the URL itself (refused host, unreachable, non-2xx, too large) and otherwise behaves like
  * extractFile on the fetched body.
  */
 import { lookup } from "node:dns/promises";
 import { isIP } from "node:net";
-import type { SourceKind } from "@mastery/shared";
+import type { ExtractionMethod, SourceKind } from "@mastery/shared";
 import { htmlToText, collapseWhitespace } from "./html.js";
 import { pageMarker } from "./chunk.js";
+import { extractPptx } from "./pptx.js";
+import { extractEpub } from "./epub.js";
+import { extractXlsx } from "./xlsx.js";
+import { openZip } from "./zip.js";
 
 export interface Extracted {
   title: string;
@@ -18,6 +22,10 @@ export interface Extracted {
   text: string;
   pages?: number;
   warning?: string;
+  /** "text" when a text layer was read, "none" when nothing usable came out, "ocr"/"mixed" after OCR. */
+  method: ExtractionMethod;
+  /** 1-based pages (PDF) that have no usable text layer, so the lead can offer OCR. Empty or absent otherwise. */
+  needsOcr?: number[];
 }
 
 type DetectedKind = SourceKind | "unknown";
@@ -26,12 +34,15 @@ const EXT_KIND: Record<string, DetectedKind> = {
   pdf: "pdf", docx: "docx", html: "html", htm: "html", xhtml: "html",
   md: "markdown", markdown: "markdown", mdx: "markdown", txt: "text", text: "text",
   epub: "epub", rst: "text", org: "text", tex: "text", csv: "text", json: "text", log: "text",
+  pptx: "pptx", xlsx: "xlsx",
 };
 
 const MIME_KIND: Record<string, DetectedKind> = {
   "application/pdf": "pdf",
   "application/x-pdf": "pdf",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation": "pptx",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "xlsx",
   "text/html": "html",
   "application/xhtml+xml": "html",
   "text/markdown": "markdown",
@@ -40,19 +51,39 @@ const MIME_KIND: Record<string, DetectedKind> = {
   "application/epub+zip": "epub",
 };
 
+/** Pre-2007 binary Office formats we do not read; the value is the format to save as. */
+const LEGACY_EXT: Record<string, "pptx" | "xlsx" | "docx"> = { ppt: "pptx", pps: "pptx", xls: "xlsx", doc: "docx", rtf: "docx" };
+const LEGACY_MIME: Record<string, "pptx" | "xlsx" | "docx"> = {
+  "application/vnd.ms-powerpoint": "pptx",
+  "application/vnd.ms-excel": "xlsx",
+  "application/msword": "docx",
+};
+
 function extensionOf(name: string): string {
   const base = name.split(/[\\/]/).pop() ?? name;
   const dot = base.lastIndexOf(".");
   return dot > 0 ? base.slice(dot + 1).toLowerCase() : "";
 }
 
+function mimeOf(mime: string | undefined): string {
+  return (mime ?? "").split(";")[0]!.trim().toLowerCase();
+}
+
 export function detectKind(name: string, mime: string | undefined): DetectedKind {
   const ext = extensionOf(name);
   if (ext && EXT_KIND[ext]) return EXT_KIND[ext]!;
-  const m = (mime ?? "").split(";")[0]!.trim().toLowerCase();
+  const m = mimeOf(mime);
   if (m && MIME_KIND[m]) return MIME_KIND[m]!;
   if (m.startsWith("text/")) return "text";
   return "unknown";
+}
+
+/** The modern format a legacy binary Office file (.ppt, .xls, .doc) should be saved as, if it is one. */
+export function legacyKind(name: string, mime: string | undefined): "pptx" | "xlsx" | "docx" | undefined {
+  const ext = extensionOf(name);
+  if (ext && LEGACY_EXT[ext]) return LEGACY_EXT[ext];
+  if (ext && EXT_KIND[ext]) return undefined;
+  return LEGACY_MIME[mimeOf(mime)];
 }
 
 export function titleFromFilename(name: string): string {
@@ -83,7 +114,29 @@ function looksBinary(text: string): boolean {
 }
 
 function fail(name: string, kind: SourceKind, warning: string, extra: Partial<Extracted> = {}): Extracted {
-  return { title: titleFromFilename(name), kind, text: "", warning, ...extra };
+  return { title: titleFromFilename(name), kind, text: "", warning, method: "none", ...extra };
+}
+
+const SUPPORTED = "Supported: PDF, DOCX, PPTX, XLSX, EPUB, HTML, Markdown and plain text.";
+
+// ---------------------------------------------------------------- pdf
+
+/** Fewer non-whitespace characters than this on a page means the page has no usable text layer. */
+export const OCR_MIN_CHARS = 40;
+
+/** "3", "12 to 19" and "24" → "Pages 3, 12 to 19 and 24". */
+export function describePages(pages: number[]): string {
+  const sorted = [...new Set(pages)].sort((a, b) => a - b);
+  const runs: string[] = [];
+  for (let i = 0; i < sorted.length;) {
+    let j = i;
+    while (j + 1 < sorted.length && sorted[j + 1] === sorted[j]! + 1) j++;
+    runs.push(j === i ? `${sorted[i]}` : j === i + 1 ? `${sorted[i]} and ${sorted[j]}` : `${sorted[i]} to ${sorted[j]}`);
+    i = j + 1;
+  }
+  const noun = sorted.length === 1 ? "Page" : "Pages";
+  if (runs.length <= 1) return `${noun} ${runs[0] ?? ""}`;
+  return `${noun} ${runs.slice(0, -1).join(", ")} and ${runs[runs.length - 1]}`;
 }
 
 async function extractPdf(name: string, bytes: Uint8Array): Promise<Extracted> {
@@ -101,64 +154,109 @@ async function extractPdf(name: string, bytes: Uint8Array): Promise<Extracted> {
     }
   } catch { /* metadata is optional */ }
 
+  if (!totalPages) return fail(name, "pdf", "This PDF has no pages.", { pages: 0, title: title ?? titleFromFilename(name) });
+
+  // Every page gets a marker, even an empty one, so OCR output can be merged back page by page.
   const parts: string[] = [];
-  for (let i = 0; i < pages.length; i++) {
+  const needsOcr: number[] = [];
+  for (let i = 0; i < totalPages; i++) {
     const body = collapseWhitespace(pages[i] ?? "");
-    if (!body) continue;
-    parts.push(pageMarker(i + 1).trim(), body);
+    if (body.replace(/\s+/g, "").length < OCR_MIN_CHARS) needsOcr.push(i + 1);
+    parts.push(body ? `${pageMarker(i + 1).trim()}\n\n${body}` : pageMarker(i + 1).trim());
   }
   const text = parts.join("\n\n");
-  const letters = text.replace(/\[\[page \d+\]\]/g, "").replace(/\s+/g, "").length;
+  const base: Extracted = { title: title ?? titleFromFilename(name), kind: "pdf", text, pages: totalPages, method: "text" };
 
-  if (letters < Math.max(40, totalPages * 8)) {
-    return fail(name, "pdf", `No extractable text; this looks like a scanned PDF (${totalPages} page${totalPages === 1 ? "" : "s"}). Run it through OCR first.`, { pages: totalPages, title: title ?? titleFromFilename(name) });
+  if (!needsOcr.length) return base;
+  if (needsOcr.length * 2 > totalPages) {
+    const all = needsOcr.length === totalPages;
+    return {
+      ...base,
+      method: "none",
+      needsOcr,
+      warning: all
+        ? `No text layer: all ${totalPages} page${totalPages === 1 ? "" : "s"} ${totalPages === 1 ? "is a scan" : "are scans"}. Press Transcribe to read ${totalPages === 1 ? "it" : "them"} with the model.`
+        : `${needsOcr.length} of ${totalPages} pages are scans with no text layer. Press Transcribe to read them with the model.`,
+    };
   }
-  return { title: title ?? titleFromFilename(name), kind: "pdf", text, pages: totalPages };
+  return {
+    ...base,
+    method: "mixed",
+    needsOcr,
+    warning: `${describePages(needsOcr)} ${needsOcr.length === 1 ? "is a scan" : "are scans"}; press Transcribe to read ${needsOcr.length === 1 ? "it" : "them"}.`,
+  };
 }
+
+// ---------------------------------------------------------------- the rest
 
 async function extractDocx(name: string, bytes: Uint8Array): Promise<Extracted> {
   const mammoth = (await import("mammoth")).default;
   const { value } = await mammoth.extractRawText({ buffer: Buffer.from(bytes) });
   const text = collapseWhitespace(value ?? "");
   if (!text) return fail(name, "docx", "No text found in this document. It may contain only images.");
-  return { title: titleFromFilename(name), kind: "docx", text };
+  return { title: titleFromFilename(name), kind: "docx", text, method: "text" };
 }
 
 function extractHtml(name: string, bytes: Uint8Array, kind: "html" | "url" = "html"): Extracted {
   const { title, text } = htmlToText(decodeText(bytes));
   if (!text) return fail(name, kind, "No readable text on this page. It may be rendered by JavaScript or be behind a login.", { title: title ?? titleFromFilename(name) });
-  return { title: title ?? titleFromFilename(name), kind, text };
+  return { title: title ?? titleFromFilename(name), kind, text, method: "text" };
 }
 
 function extractPlain(name: string, bytes: Uint8Array, kind: "markdown" | "text"): Extracted {
   const text = collapseWhitespace(decodeText(bytes));
-  if (looksBinary(text)) return fail(name, kind, "This file is not readable as text. Supported: PDF, DOCX, HTML, Markdown and plain text.");
+  if (looksBinary(text)) return fail(name, kind, `This file is not readable as text. ${SUPPORTED}`);
   if (!text) return fail(name, kind, "The file is empty.");
-  return { title: firstHeading(text) ?? titleFromFilename(name), kind, text };
+  return { title: firstHeading(text) ?? titleFromFilename(name), kind, text, method: "text" };
+}
+
+/** What a PK zip holds, by its tell-tale part. */
+function sniffZip(bytes: Uint8Array): "docx" | "pptx" | "xlsx" | "epub" | undefined {
+  const zip = openZip(bytes);
+  if (!zip) return undefined;
+  if (zip["ppt/presentation.xml"]) return "pptx";
+  if (zip["xl/workbook.xml"]) return "xlsx";
+  if (zip["word/document.xml"]) return "docx";
+  if (zip["META-INF/container.xml"] || Object.keys(zip).some((k) => k.toLowerCase().endsWith(".opf"))) return "epub";
+  return undefined;
 }
 
 /**
  * Dispatch on extension, then MIME type. Never throws.
  */
 export async function extractFile(name: string, mime: string | undefined, bytes: Uint8Array): Promise<Extracted> {
+  const legacy = legacyKind(name, mime);
+  if (legacy) {
+    const ext = extensionOf(name) || legacy.slice(0, -1);
+    return fail(name, legacy, `Old binary .${ext} files cannot be read. Save it as .${legacy} and add that instead.`);
+  }
   const kind = detectKind(name, mime);
   try {
     if (!bytes || bytes.byteLength === 0) {
       return fail(name, kind === "unknown" ? "text" : kind, "The file is empty.");
     }
+    const failWith = (k: SourceKind) => (warning: string) => fail(name, k, warning);
+    const fallback = titleFromFilename(name);
     switch (kind) {
       case "pdf": return await extractPdf(name, bytes);
       case "docx": return await extractDocx(name, bytes);
+      case "pptx": return extractPptx(bytes, failWith("pptx"), fallback);
+      case "xlsx": return extractXlsx(bytes, failWith("xlsx"), fallback);
+      case "epub": return extractEpub(bytes, failWith("epub"), fallback);
       case "html":
       case "url": return extractHtml(name, bytes);
       case "markdown": return extractPlain(name, bytes, "markdown");
       case "text": return extractPlain(name, bytes, "text");
-      case "epub": return fail(name, "epub", "EPUB is not supported yet. Convert it to PDF or HTML and add that instead.");
       case "unknown": {
         // Sniff a few common cases, then fall back to text.
         if (bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46) return await extractPdf(name, bytes); // %PDF
-        if (bytes[0] === 0x50 && bytes[1] === 0x4b) { // PK zip: probably docx or epub
-          try { return await extractDocx(name, bytes); } catch { return fail(name, "text", "Unsupported file type. Supported: PDF, DOCX, HTML, Markdown and plain text."); }
+        if (bytes[0] === 0x50 && bytes[1] === 0x4b) { // PK zip: docx, pptx, xlsx or epub
+          const inside = sniffZip(bytes);
+          if (inside === "pptx") return extractPptx(bytes, failWith("pptx"), fallback);
+          if (inside === "xlsx") return extractXlsx(bytes, failWith("xlsx"), fallback);
+          if (inside === "epub") return extractEpub(bytes, failWith("epub"), fallback);
+          if (inside === "docx") return await extractDocx(name, bytes);
+          return fail(name, "text", `Unsupported file type. ${SUPPORTED}`);
         }
         const head = decodeText(bytes.subarray(0, 2048)).trimStart().toLowerCase();
         if (head.startsWith("<!doctype html") || head.startsWith("<html") || /<(head|body|title)\b/.test(head)) return extractHtml(name, bytes);
@@ -169,6 +267,7 @@ export async function extractFile(name: string, mime: string | undefined, bytes:
     const msg = err instanceof Error ? err.message : String(err);
     const k: SourceKind = kind === "unknown" ? "text" : kind;
     if (k === "pdf") return fail(name, k, `Could not read this PDF (${msg}). It may be encrypted or damaged.`);
+    if (k === "docx") return fail(name, k, `Could not read this document (${msg}). Re-save it as .docx from Word and try again.`);
     return fail(name, k, `Could not read this file: ${msg}`);
   }
 }

@@ -5,8 +5,12 @@
  */
 import type { Extracted } from "./extract.js";
 import { unitMarker } from "./chunk.js";
-import { collapseWhitespace } from "./html.js";
-import { attr, coreTitle, decodeXml, dropAll, findAll, findAllAt, findFirst, inner, mdTable, openTag, openZip, readRels, resolvePath, zipText, type Zip } from "./zip.js";
+import { attr, coreTitle, decodeXml, dropAll, findAll, findAllAt, findFirst, mdTable, openTag, openZip, readRels, resolvePath, zipText, type Zip } from "./zip.js";
+
+/** Like collapseWhitespace but keeps leading indentation, which carries list nesting. */
+function tidy(s: string): string {
+  return s.replace(/\r\n?/g, "\n").split("\n").map((l) => l.replace(/[ \t]+$/, "")).join("\n").replace(/\n{3,}/g, "\n\n").trim();
+}
 
 /** Placeholder types that hold chrome rather than content. */
 const SKIP_PLACEHOLDERS = new Set(["sldNum", "dt", "ftr", "hdr", "sldImg"]);
@@ -71,8 +75,12 @@ function tableToMarkdown(tbl: string): string {
 
 interface SlideText { title?: string; lines: string[] }
 
-/** Walk the shapes of a slide (or notes slide) in document order. */
-function slideContent(xml: string, opts: { titleFromPlaceholder: boolean }): SlideText {
+/**
+ * Walk the shapes of a slide (or notes slide) in document order. On a slide the body
+ * placeholder's paragraphs are bullets (that is what PowerPoint renders them as); in notes they
+ * are prose.
+ */
+function slideContent(xml: string, opts: { titleFromPlaceholder: boolean; bodyAsList: boolean }): SlideText {
   const tree = findFirst(xml, "p:spTree") ?? xml;
   const items = [
     ...findAllAt(tree, "p:sp").map((x) => ({ ...x, kind: "sp" as const })),
@@ -92,7 +100,7 @@ function slideContent(xml: string, opts: { titleFromPlaceholder: boolean }): Sli
     const body = findFirst(item.el, "p:txBody");
     if (!body) continue;
     const isTitle = opts.titleFromPlaceholder && (ph === "title" || ph === "ctrTitle");
-    const inList = ph === "body" && !isTitle;
+    const inList = opts.bodyAsList && ph === "body" && !isTitle;
     const paras = findAll(body, "a:p").map((p) => paragraph(p, inList)).filter((p): p is Para => Boolean(p));
     if (!paras.length) continue;
     if (isTitle && title === undefined) {
@@ -131,11 +139,15 @@ function notesFor(zip: Zip, slidePath: string): string[] {
   if (!notes) return [];
   const xml = zipText(zip, notes.target);
   if (!xml) return [];
-  const { lines } = slideContent(xml, { titleFromPlaceholder: false });
+  const { lines } = slideContent(xml, { titleFromPlaceholder: false, bodyAsList: false });
   return lines;
 }
 
-export function extractPptx(name: string, bytes: Uint8Array, fail: (warning: string) => Extracted, fallbackTitle: string): Extracted {
+/**
+ * `fail` builds the never-throw failure result for this file; `fallbackTitle` is used when
+ * neither the document properties nor the first slide name the deck.
+ */
+export function extractPptx(bytes: Uint8Array, fail: (warning: string) => Extracted, fallbackTitle: string): Extracted {
   const zip = openZip(bytes);
   if (!zip) return fail("This file is not a valid .pptx (the archive could not be opened). Re-save it from PowerPoint and try again.");
   const paths = slidePaths(zip);
@@ -147,10 +159,10 @@ export function extractPptx(name: string, bytes: Uint8Array, fail: (warning: str
   paths.forEach((path, i) => {
     const n = i + 1;
     const xml = zipText(zip, path) ?? "";
-    const { title, lines } = slideContent(dropAll(xml, "p:extLst"), { titleFromPlaceholder: true });
+    const { title, lines } = slideContent(dropAll(xml, "p:extLst"), { titleFromPlaceholder: true, bodyAsList: true });
     if (title && !firstTitle) firstTitle = title;
-    const body = collapseWhitespace(lines.join("\n"));
-    const notes = collapseWhitespace(notesFor(zip, path).join("\n"));
+    const body = tidy(lines.join("\n"));
+    const notes = tidy(notesFor(zip, path).join("\n"));
     contentChars += body.length + notes.length + (title?.length ?? 0);
     const section = [`## Slide ${n}${title ? `: ${title}` : ""}`];
     if (body) section.push("", body);

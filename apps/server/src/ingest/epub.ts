@@ -9,7 +9,7 @@ import { attr, findAll, findFirst, openTag, openZip, resolvePath, textOf, zipTex
 
 const MIN_NAV_CHARS = 200;
 
-export function extractEpub(name: string, bytes: Uint8Array, fail: (warning: string) => Extracted, fallbackTitle: string): Extracted {
+export function extractEpub(bytes: Uint8Array, fail: (warning: string) => Extracted, fallbackTitle: string): Extracted {
   const zip = openZip(bytes);
   if (!zip) return fail("This file is not a valid EPUB (the archive could not be opened).");
 

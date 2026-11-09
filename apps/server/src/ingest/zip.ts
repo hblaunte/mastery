@@ -84,24 +84,31 @@ function nameRe(name: string): string {
   return name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+/**
+ * Matches one `<name …>…</name>` or `<name …/>` element. The attribute part is lazy so the
+ * "/" of a self-closing tag is never swallowed, and the name must be followed by whitespace,
+ * "/>" or ">" so "<c" does not match "<cols>".
+ */
+function elementRe(name: string, flags = ""): RegExp {
+  const n = nameRe(name);
+  return new RegExp(`<${n}(?:\\s[^>]*?)?(?:/>|>[\\s\\S]*?<\\/${n}\\s*>)`, flags);
+}
+
 /** Every `<name …>…</name>` or `<name …/>` element in document order, including its tags. */
 export function findAll(xml: string, name: string): string[] {
-  const re = new RegExp(`<${nameRe(name)}(?:\\s[^>]*)?(?:/>|>[\\s\\S]*?<\\/${nameRe(name)}\\s*>)`, "g");
-  return xml.match(re) ?? [];
+  return xml.match(elementRe(name, "g")) ?? [];
 }
 
 /** Like findAll but also tells where each element starts, for interleaving different element kinds. */
 export function findAllAt(xml: string, name: string): { at: number; el: string }[] {
-  const re = new RegExp(`<${nameRe(name)}(?:\\s[^>]*)?(?:/>|>[\\s\\S]*?<\\/${nameRe(name)}\\s*>)`, "g");
   const out: { at: number; el: string }[] = [];
-  for (const m of xml.matchAll(re)) out.push({ at: m.index ?? 0, el: m[0] });
+  for (const m of xml.matchAll(elementRe(name, "g"))) out.push({ at: m.index ?? 0, el: m[0] });
   return out;
 }
 
 /** The first `<name …>` element, or undefined. */
 export function findFirst(xml: string, name: string): string | undefined {
-  const re = new RegExp(`<${nameRe(name)}(?:\\s[^>]*)?(?:/>|>[\\s\\S]*?<\\/${nameRe(name)}\\s*>)`);
-  return re.exec(xml)?.[0];
+  return elementRe(name).exec(xml)?.[0];
 }
 
 /** The opening tag of an element string (everything up to the first ">"). */
@@ -125,8 +132,7 @@ export function textOf(xml: string, tag: string, sep = ""): string {
 
 /** Remove every `<name …>…</name>` element from `xml`. */
 export function dropAll(xml: string, name: string): string {
-  const re = new RegExp(`<${nameRe(name)}(?:\\s[^>]*)?(?:/>|>[\\s\\S]*?<\\/${nameRe(name)}\\s*>)`, "g");
-  return xml.replace(re, "");
+  return xml.replace(elementRe(name, "g"), "");
 }
 
 /** Parse a .rels part into Id → { target, type }. Targets are resolved against `partPath`'s directory. */

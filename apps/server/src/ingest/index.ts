@@ -1,5 +1,11 @@
-export { extractFile, extractUrl, detectKind, titleFromFilename, assertSafeUrl, isPrivateAddress, UrlError } from "./extract.js";
+export { extractFile, extractUrl, detectKind, legacyKind, titleFromFilename, describePages, assertSafeUrl, isPrivateAddress, UrlError, OCR_MIN_CHARS } from "./extract.js";
 export type { Extracted } from "./extract.js";
-export { chunkText, pageMarker, DEFAULT_TARGET, DEFAULT_OVERLAP } from "./chunk.js";
+export { chunkText, pageMarker, unitMarker, DEFAULT_TARGET, DEFAULT_OVERLAP } from "./chunk.js";
+export type { Unit } from "./chunk.js";
 export { htmlToText, decodeEntities, collapseWhitespace } from "./html.js";
 export type { HtmlText } from "./html.js";
+export { extractPptx } from "./pptx.js";
+export { extractEpub } from "./epub.js";
+export { extractXlsx } from "./xlsx.js";
+export { ocrPdfPages, mergeOcr, OcrError, OCR_SYSTEM, BATCH_PAGES } from "./ocr.js";
+export type { OcrDeps, OcrResult } from "./ocr.js";
