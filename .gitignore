@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.env
+# Your study record and your sources stay local by default.
+data/
+!data/.gitkeep
+*.log
+.DS_Store

@@ -1,0 +1,213 @@
+/* Knowledge graph: the canvas wrapper and everything floating over it.
+   Plain CSS on the product tokens (tokens.css, glass.css). The canvas itself
+   always renders on the dark void (additive glow needs a dark ground); panels
+   follow the theme through the tokens.
+
+   The shell can set --kg-inset-top / --kg-inset-bottom on the wrapper to keep
+   the panels clear of its top bar and tab bar. */
+
+.kg-wrap {
+  position: relative;
+  overflow: hidden;
+  background: #0A0C0F; /* keep in step with SCENE_BG_HEX in nodes.ts */
+  color: var(--fg);
+  font-family: var(--font-body);
+}
+
+/* The library's own node tooltip box: ours (.kg-tip) draws the glass, so the
+   wrapper is bare. Our beam label replaces it while a beam is hovered. */
+.kg-wrap .float-tooltip-kap { padding: 0; background: none; border-radius: 0; max-width: none; font: inherit; color: inherit; }
+.kg-wrap[data-beam-hover] .float-tooltip-kap { display: none !important; }
+
+/* ---- tooltips (the library's nodeLabel HTML and our beam label) ---- */
+.kg-tip {
+  background: rgba(10, 12, 15, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-family: var(--font-body);
+  font-size: 12px;
+  line-height: 1.5;
+  color: #E8EAEF;
+  max-width: 240px;
+  text-wrap: pretty;
+}
+.kg-tip-course { font-weight: 600; }
+.kg-tip-meta { color: rgba(232, 234, 239, 0.62); font-variant-numeric: tabular-nums; }
+.kg-tip-meta::before { content: " · "; }
+.kg-tip-label { margin-block-start: 2px; }
+.kg-tip-go { color: rgba(232, 234, 239, 0.62); }
+.kg-beam-tip { position: absolute; pointer-events: none; z-index: 5; }
+
+/* ---- focus vignette: darkens the edges while a node is open ---- */
+.kg-vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse 60% 65% at 50% 50%, transparent 35%, rgba(5, 6, 9, 0.6) 100%);
+  opacity: 0;
+  transition: opacity 600ms ease;
+}
+.kg-vignette.on { opacity: 1; }
+
+/* ---- shared glass panel over the canvas ---- */
+.kg-panel {
+  border-radius: 20px;
+  -webkit-backdrop-filter: blur(24px) saturate(1.6);
+  backdrop-filter: blur(24px) saturate(1.6);
+  box-shadow: var(--card-shadow), 0 12px 40px rgba(0, 0, 0, 0.35);
+}
+.kg-overline { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.05em; text-transform: uppercase; color: var(--fg2); }
+.kg-num { font-variant-numeric: tabular-nums; }
+.kg-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; flex: none; }
+.kg-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--fg2);
+  cursor: pointer;
+  transition: color 150ms ease-out, background-color 150ms ease-out;
+}
+@media (hover: hover) {
+  .kg-icon-btn:hover { color: var(--fg); background: var(--hover); }
+}
+.kg-wrap :focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+
+/* ---- node detail panel ---- */
+.kg-note {
+  position: absolute;
+  top: var(--kg-inset-top, 16px);
+  right: 16px;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100% - var(--kg-inset-top, 16px) - var(--kg-inset-bottom, 16px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+@media (min-width: 640px) { .kg-note { right: 24px; } }
+.kg-resize {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 8px;
+  cursor: col-resize;
+  border-radius: 20px 0 0 20px;
+  touch-action: none;
+}
+@media (hover: hover) {
+  .kg-resize:hover { background: linear-gradient(to right, var(--hover), transparent); }
+}
+.kg-note-body { display: flex; flex-direction: column; padding: 20px 24px 24px; }
+.kg-note-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.kg-note-head .kg-icon-btn { margin-inline-end: -6px; }
+.kg-course-chip { background: color-mix(in srgb, currentColor 14%, transparent); }
+.kg-note-title { margin-block-start: 16px; font-size: 1.0625rem; font-weight: 600; letter-spacing: -0.01em; line-height: 1.35; text-wrap: pretty; overflow-wrap: anywhere; }
+.kg-note-meta { margin-block-start: 6px; font-size: 12.5px; color: var(--fg2); display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 6px; }
+.kg-sep { color: var(--fg3); }
+.kg-state { font-weight: 600; }
+.kg-state.mastered { color: var(--st-done); }
+.kg-state.lit { color: var(--fg); }
+.kg-state.emerging { color: var(--fg3); }
+.kg-note-content {
+  margin-block-start: 16px;
+  font-size: 0.9375rem;
+  line-height: 1.65;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  text-wrap: pretty;
+}
+.kg-tags { list-style: none; margin: 20px 0 0; padding: 0; }
+.kg-note-actions { display: flex; margin-block-start: 24px; }
+
+/* ---- legend ---- */
+.kg-legend { display: flex; flex-direction: column; gap: 14px; padding: 18px 20px; width: 220px; }
+.kg-legend-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.kg-legend-row { display: flex; align-items: center; gap: 10px; font-size: 13px; line-height: 1.4; min-width: 0; }
+.kg-legend-name { flex: 1; min-width: 0; color: var(--fg); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kg-legend-count { font-size: 12px; color: var(--fg2); }
+.kg-legend-foot { font-family: var(--font-mono); font-size: 11px; color: var(--fg2); margin: 0; text-wrap: pretty; }
+.kg-legend .hint { margin: -8px 0 0; }
+
+/* ---- draggable pip ---- */
+.kg-pip-tab {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px 0;
+  border: 1px solid var(--chrome-line);
+  background: var(--chrome);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+  box-shadow: var(--chrome-rim), 0 8px 24px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+}
+.kg-pip-tab.left { left: 0; border-radius: 0 10px 10px 0; border-left: 0; }
+.kg-pip-tab.right { right: 0; border-radius: 10px 0 0 10px; border-right: 0; }
+.kg-pip-tab-label {
+  writing-mode: vertical-rl;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.kg-pip-tab.right .kg-pip-tab-label { transform: rotate(180deg); }
+.kg-pip { position: absolute; }
+.kg-pip-handle {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  margin-block-end: 4px;
+}
+.kg-pip-handle:active { cursor: grabbing; }
+.kg-pip-grip { width: 32px; height: 4px; border-radius: 2px; background: var(--ghost-h); }
+.kg-pip-hide { position: absolute; right: 2px; top: 50%; transform: translateY(-50%); padding: 4px; }
+
+/* ---- empty state ---- */
+.kg-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 24px;
+  text-align: center;
+  color: #E8EAEF;
+}
+.kg-empty-title { font-size: 1.125rem; font-weight: 600; letter-spacing: -0.01em; }
+.kg-empty-body { font-size: 13.5px; line-height: 1.55; color: rgba(232, 234, 239, 0.66); max-width: 40ch; text-wrap: pretty; }
+
+/* ---- motion ---- */
+@media (prefers-reduced-motion: no-preference) {
+  .kg-wrap:not([data-reduced-motion]) .kg-note { animation: kg-panel-in 300ms ease-out both; }
+  .kg-wrap:not([data-reduced-motion]) .kg-note-body { animation: kg-fade-in 200ms ease-out both; }
+}
+.kg-wrap[data-reduced-motion] .kg-note { animation: kg-fade-in 200ms ease-out both; }
+.kg-wrap[data-reduced-motion] .kg-vignette { transition-duration: 200ms; }
+@media (prefers-reduced-motion: reduce) {
+  .kg-note { animation: kg-fade-in 200ms ease-out both; }
+  .kg-vignette { transition-duration: 200ms; }
+}
+@keyframes kg-panel-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes kg-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}

@@ -1,0 +1,118 @@
+/* Mastery design tokens, ported from the Helm Frontend Kit (see ATTRIBUTION.md). Light is the base; dark mirrors every token, chosen by the system or by
+   [data-theme] on <html> (Settings → Appearance writes it).
+
+   Two layers:
+   - Glass tokens (D47): washes, tinted cards, chrome glass, ink pills, status. The desktop uses these.
+   - Legacy tokens (--surface, --line, --muted, --accent, --sea, …): still read by the Companion PWA
+     until its own restyle. Do not use them in new desktop code.
+
+   Measured (WCAG 2): --fg/--fg2/--fg3 reach 4.5:1 on --bg and on --card over every wash; status
+   tokens reach 4.5:1 on --card; --on-ink on --ink 15:1+; --field-focus and --ring reach 3:1 on their
+   surroundings. Re-measure after changing any value. */
+:root {
+  /* ---- glass: surfaces ---- */
+  --bg: #EEF1F5; --fg: #0E1116; --fg2: rgba(14,17,22,.70); --fg3: rgba(14,17,22,.60);
+  --card: rgba(255,255,255,.60); --card-line: rgba(255,255,255,.82);
+  --card-shadow: 0 1px 2px rgba(16,24,40,.04), 0 8px 24px rgba(16,24,40,.06);
+  --card-2: rgba(255,255,255,.74); --hover: rgba(14,17,22,.045);
+  --ctrl: rgba(255,255,255,.62); --ctrl-h: rgba(255,255,255,.92); --ctrl-line: rgba(255,255,255,.9);
+  --chip: rgba(14,17,22,.065); --seg: rgba(14,17,22,.06); --seg-on: #FFFFFF; --seg-on-shadow: 0 1px 3px rgba(16,24,40,.12);
+  --ink: #0E1116; --on-ink: #FFFFFF; --ghost: rgba(14,17,22,.07); --ghost-h: rgba(14,17,22,.12);
+  --code: rgba(14,17,22,.06); --code-fg: #1B2430;
+  --field: rgba(255,255,255,.78); --field-line: rgba(14,17,22,.12); --field-focus: rgba(14,17,22,.45); --halo: rgba(14,17,22,.10);
+  /* chrome glass (Liquid Glass in light: white rim and a top sheen) */
+  --chrome: rgba(255,255,255,.42); --chrome-line: rgba(255,255,255,.78);
+  --chrome-shadow: 0 10px 36px rgba(31,38,68,.16), 0 1px 3px rgba(31,38,68,.08);
+  --chrome-rim: inset 0 1px 0 rgba(255,255,255,.95), inset 0 -1px 1px rgba(255,255,255,.45);
+  --sheen: linear-gradient(180deg, rgba(255,255,255,.55), rgba(255,255,255,0) 60%);
+  --lens: rgba(255,255,255,.85); --lens-shadow: inset 0 1px 0 #FFFFFF, 0 2px 10px rgba(31,38,68,.14);
+  --scrim: rgba(238,241,245,.22); --sheet: rgba(246,247,249,.52); --recede: blur(22px) brightness(1.04) saturate(.85);
+  /* status: one meaning each, always paired with a label */
+  --st-working: #0F766E; --st-needs: #94570A; --st-failed: #B03A2E; --st-done: #2E7D4F; --st-queued: rgba(14,17,22,.62);
+  --ring: #0E1116; --dot-ring: #FFFFFF; --on-bloom: #FFFFFF;
+  --danger: #B03A2E; --danger-bg: rgba(176,58,46,.14); --ok-bg: rgba(46,125,79,.12); --badge: #F2B544; --on-badge: #1C1306;
+  /* section washes and press tints */
+  --wash-home: radial-gradient(140% 75% at 50% -12%, #8EDCCD 0%, #C9EEE6 42%, rgba(238,241,245,0) 82%), linear-gradient(180deg, #D9F2EC 0%, #EEF1F5 72%);
+  --wash-study: radial-gradient(140% 75% at 50% -12%, #AEB9FF 0%, #D8DEFF 44%, rgba(238,241,245,0) 82%), linear-gradient(180deg, #DFE3FB 0%, #EEF1F5 72%);
+  --wash-graph: radial-gradient(140% 75% at 50% -12%, #CDB4FF 0%, #E7DCFF 44%, rgba(238,241,245,0) 82%), linear-gradient(180deg, #EAE2FB 0%, #EEF1F5 72%);
+  --wash-library: radial-gradient(140% 75% at 50% -12%, #F2CD8A 0%, #F8E6C6 44%, rgba(238,241,245,0) 82%), linear-gradient(180deg, #F7EBD6 0%, #EEF1F5 72%);
+  --wash-progress: radial-gradient(140% 75% at 50% -12%, #CDD3DD 0%, #E3E7ED 46%, rgba(238,241,245,0) 82%), linear-gradient(180deg, #E6E9EE 0%, #EEF1F5 72%);
+  --bloom-home: #0F8F7C; --bloom-study: #4F5FD6; --bloom-graph: #7B4FE0; --bloom-library: #B5761A; --bloom-progress: #3B4350;
+  /* course hue → wash and avatar, used as hsl(var(--hue) …) */
+  --glyph-l: 24%; --repo-wash-l1: 70%; --repo-wash-l2: 91%; --repo-wash-end: rgba(242,244,247,.78); --repo-s1: 70%; --repo-s2: 60%;
+
+  /* ---- type and space (shared) ---- */
+  --font-body: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, "Segoe UI", sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --text-caption: 0.75rem; --text-body-sm: 0.8125rem; --text-body: 0.875rem; --text-title: 1rem; --text-heading: 1.25rem;
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-6: 24px;
+  --radius-sm: 4px; --radius: 8px; --radius-lg: 12px;
+  /* ---- motion: three curves, used everywhere ---- */
+  --ease-settle: cubic-bezier(.2,.8,.2,1); --ease-spring: cubic-bezier(.34,1.56,.64,1); --ease-exit: cubic-bezier(.4,0,1,1);
+
+  /* ---- legacy (Companion PWA) ---- */
+  --surface: #FFFFFF; --line: #D7DDE3; --line-strong: #7D8995; --code-bg: #E9EDF1;
+  --muted: #5B6773;
+  --accent: #8F6519; --on-accent: #FFFFFF; --accent-soft: #F1E7D2;
+  --sea: #1F6F78; --sea-soft: #D9ECEE; --focus: #1F6F78;
+  --ok: #2E7D4F; --warn: #9A5B00; --crit: #B03A2E;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0A0C0F; --fg: #F3F5F7; --fg2: rgba(240,244,248,.72); --fg3: rgba(240,244,248,.60);
+  --card: rgba(255,255,255,.065); --card-line: rgba(255,255,255,.07); --card-shadow: none;
+  --card-2: rgba(255,255,255,.06); --hover: rgba(255,255,255,.055);
+  --ctrl: rgba(255,255,255,.12); --ctrl-h: rgba(255,255,255,.18); --ctrl-line: transparent;
+  --chip: rgba(255,255,255,.12); --seg: rgba(255,255,255,.10); --seg-on: rgba(255,255,255,.20); --seg-on-shadow: none;
+  --ink: #F5F7F8; --on-ink: #0B0D10; --ghost: rgba(255,255,255,.13); --ghost-h: rgba(255,255,255,.20);
+  --code: rgba(0,0,0,.30); --code-fg: #E6EAEE;
+  --field: rgba(0,0,0,.22); --field-line: rgba(255,255,255,.10); --field-focus: rgba(255,255,255,.42); --halo: rgba(255,255,255,.14);
+  --chrome: rgba(22,25,30,.52); --chrome-line: rgba(255,255,255,.08); --chrome-shadow: 0 12px 40px rgba(0,0,0,.35);
+  --chrome-rim: inset 0 1px 0 rgba(255,255,255,.07); --sheen: none;
+  --lens: rgba(255,255,255,.14); --lens-shadow: inset 0 1px 0 rgba(255,255,255,.12);
+  --scrim: rgba(6,8,10,.30); --sheet: rgba(10,12,15,.38); --recede: blur(22px) brightness(.62) saturate(1.15);
+  --st-working: #7FE0D2; --st-needs: #F6C66A; --st-failed: #FF8D7E; --st-done: #8FE3A0; --st-queued: rgba(240,244,248,.70);
+  --ring: #FFFFFF; --dot-ring: #1A1F22; --on-bloom: #07211D;
+  --danger: #FF8D7E; --danger-bg: rgba(255,120,100,.24); --ok-bg: rgba(123,224,160,.14);
+  --wash-home: radial-gradient(140% 75% at 50% -12%, #2E8E83 0%, #17453F 42%, rgba(10,12,15,0) 82%), linear-gradient(180deg, #123431 0%, #0A0C0F 72%);
+  --wash-study: radial-gradient(140% 75% at 50% -12%, #4C5DC6 0%, #1F275C 44%, rgba(10,12,15,0) 82%), linear-gradient(180deg, #171D45 0%, #0A0C0F 72%);
+  --wash-graph: radial-gradient(140% 75% at 50% -12%, #7A4BE0 0%, #2E1C63 44%, rgba(10,12,15,0) 82%), linear-gradient(180deg, #22164C 0%, #0A0C0F 72%);
+  --wash-library: radial-gradient(140% 75% at 50% -12%, #A9772C 0%, #43301A 44%, rgba(10,12,15,0) 82%), linear-gradient(180deg, #30220F 0%, #0A0C0F 72%);
+  --wash-progress: radial-gradient(140% 75% at 50% -12%, #3A4250 0%, #1B1F25 46%, rgba(10,12,15,0) 82%), linear-gradient(180deg, #161A1F 0%, #0A0C0F 72%);
+  --bloom-home: #72EBD3; --bloom-study: #A9B6FF; --bloom-graph: #C9AEFF; --bloom-library: #FFD27A; --bloom-progress: #E8ECF0;
+  --glyph-l: 94%; --repo-wash-l1: 36%; --repo-wash-l2: 17%; --repo-wash-end: rgba(10,12,15,.72); --repo-s1: 48%; --repo-s2: 42%;
+  --surface: #151C24; --line: #27313C; --line-strong: #66737F; --code-bg: #1B232C;
+  --muted: #97A3AF;
+  --accent: #D4A03C; --on-accent: #0E1319; --accent-soft: #2A2416;
+  --sea: #4FB3BC; --sea-soft: #14303A; --focus: #4FB3BC;
+  --ok: #5BBF86; --warn: #E0A33A; --crit: #E0695C;
+  color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #0A0C0F; --fg: #F3F5F7; --fg2: rgba(240,244,248,.72); --fg3: rgba(240,244,248,.60);
+  --card: rgba(255,255,255,.065); --card-line: rgba(255,255,255,.07); --card-shadow: none;
+  --card-2: rgba(255,255,255,.06); --hover: rgba(255,255,255,.055);
+  --ctrl: rgba(255,255,255,.12); --ctrl-h: rgba(255,255,255,.18); --ctrl-line: transparent;
+  --chip: rgba(255,255,255,.12); --seg: rgba(255,255,255,.10); --seg-on: rgba(255,255,255,.20); --seg-on-shadow: none;
+  --ink: #F5F7F8; --on-ink: #0B0D10; --ghost: rgba(255,255,255,.13); --ghost-h: rgba(255,255,255,.20);
+  --code: rgba(0,0,0,.30); --code-fg: #E6EAEE;
+  --field: rgba(0,0,0,.22); --field-line: rgba(255,255,255,.10); --field-focus: rgba(255,255,255,.42); --halo: rgba(255,255,255,.14);
+  --chrome: rgba(22,25,30,.52); --chrome-line: rgba(255,255,255,.08); --chrome-shadow: 0 12px 40px rgba(0,0,0,.35);
+  --chrome-rim: inset 0 1px 0 rgba(255,255,255,.07); --sheen: none;
+  --lens: rgba(255,255,255,.14); --lens-shadow: inset 0 1px 0 rgba(255,255,255,.12);
+  --scrim: rgba(6,8,10,.30); --sheet: rgba(10,12,15,.38); --recede: blur(22px) brightness(.62) saturate(1.15);
+  --st-working: #7FE0D2; --st-needs: #F6C66A; --st-failed: #FF8D7E; --st-done: #8FE3A0; --st-queued: rgba(240,244,248,.70);
+  --ring: #FFFFFF; --dot-ring: #1A1F22; --on-bloom: #07211D;
+  --danger: #FF8D7E; --danger-bg: rgba(255,120,100,.24); --ok-bg: rgba(123,224,160,.14);
+  --wash-home: radial-gradient(140% 75% at 50% -12%, #2E8E83 0%, #17453F 42%, rgba(10,12,15,0) 82%), linear-gradient(180deg, #123431 0%, #0A0C0F 72%);
+  --wash-study: radial-gradient(140% 75% at 50% -12%, #4C5DC6 0%, #1F275C 44%, rgba(10,12,15,0) 82%), linear-gradient(180deg, #171D45 0%, #0A0C0F 72%);
+  --wash-graph: radial-gradient(140% 75% at 50% -12%, #7A4BE0 0%, #2E1C63 44%, rgba(10,12,15,0) 82%), linear-gradient(180deg, #22164C 0%, #0A0C0F 72%);
+  --wash-library: radial-gradient(140% 75% at 50% -12%, #A9772C 0%, #43301A 44%, rgba(10,12,15,0) 82%), linear-gradient(180deg, #30220F 0%, #0A0C0F 72%);
+  --wash-progress: radial-gradient(140% 75% at 50% -12%, #3A4250 0%, #1B1F25 46%, rgba(10,12,15,0) 82%), linear-gradient(180deg, #161A1F 0%, #0A0C0F 72%);
+  --bloom-home: #72EBD3; --bloom-study: #A9B6FF; --bloom-graph: #C9AEFF; --bloom-library: #FFD27A; --bloom-progress: #E8ECF0;
+  --glyph-l: 94%; --repo-wash-l1: 36%; --repo-wash-l2: 17%; --repo-wash-end: rgba(10,12,15,.72); --repo-s1: 48%; --repo-s2: 42%;
+  --surface: #151C24; --line: #27313C; --line-strong: #66737F; --code-bg: #1B232C;
+  --muted: #97A3AF;
+  --accent: #D4A03C; --on-accent: #0E1319; --accent-soft: #2A2416;
+  --sea: #4FB3BC; --sea-soft: #14303A; --focus: #4FB3BC;
+  --ok: #5BBF86; --warn: #E0A33A; --crit: #E0695C;
+  color-scheme: dark; }
