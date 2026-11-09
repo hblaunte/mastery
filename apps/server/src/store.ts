@@ -1,8 +1,7 @@
 /**
  * Persistence. Everything is plain JSON on disk so it survives, diffs and greps.
  *
- *   data/sources/<id>.json          Source metadata
- *   data/sources/<id>.chunks.json   SourceChunk[]
+ *   data/library/                   sources as Markdown with frontmatter (library.ts)
  *   data/courses/<id>.json          Course (with answer keys; never served whole)
  *   data/state.json                 per-item scheduling state
  *   data/sessions/<stamp>-<id>.json one record per session, never rewritten
@@ -11,12 +10,11 @@
  */
 import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import type { CalibrationPoint, Course, ItemState, Job, SessionRecord, Settings, Source, SourceChunk } from "@mastery/shared";
+import type { CalibrationPoint, Course, ItemState, Job, SessionRecord, Settings } from "@mastery/shared";
 import { DATA_DIR, GRAPH_THRESHOLD_DEFAULT, routingSummary } from "./config.js";
 import { nowIso } from "./ids.js";
 
 const dirs = {
-  sources: path.join(DATA_DIR, "sources"),
   courses: path.join(DATA_DIR, "courses"),
   sessions: path.join(DATA_DIR, "sessions"),
   jobs: path.join(DATA_DIR, "jobs"),
@@ -49,28 +47,9 @@ function listJson<T>(dir: string, filter = (name: string) => name.endsWith(".jso
     .map((name) => JSON.parse(readFileSync(path.join(dir, name), "utf8")) as T);
 }
 
-// ------------------------------------------------------------------ sources
+// ------------------------------------------------------------------ sources (see library.ts)
 
-export function listSources(): Source[] {
-  return listJson<Source>(dirs.sources, (n) => n.endsWith(".json") && !n.endsWith(".chunks.json")).sort((a, b) => b.added.localeCompare(a.added));
-}
-export function getSource(id: string): Source | null {
-  return readJson<Source>(path.join(dirs.sources, `${safe(id)}.json`));
-}
-export function getChunks(id: string): SourceChunk[] {
-  return readJson<SourceChunk[]>(path.join(dirs.sources, `${safe(id)}.chunks.json`)) ?? [];
-}
-export function saveSource(source: Source, chunks: SourceChunk[]): void {
-  atomicWrite(path.join(dirs.sources, `${safe(source.id)}.json`), source);
-  atomicWrite(path.join(dirs.sources, `${safe(source.id)}.chunks.json`), chunks);
-}
-export function deleteSource(id: string): boolean {
-  const meta = path.join(dirs.sources, `${safe(id)}.json`);
-  if (!existsSync(meta)) return false;
-  rmSync(meta);
-  rmSync(path.join(dirs.sources, `${safe(id)}.chunks.json`), { force: true });
-  return true;
-}
+export { listSources, getSource, getChunks, deleteSource } from "./library.js";
 
 // ------------------------------------------------------------------ courses
 

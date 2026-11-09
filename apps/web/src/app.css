@@ -124,3 +124,27 @@
   .picker-readout { font-size: 36px; }
 }
 .shell[data-tab="graph"] .stage { --kg-inset-top: 84px; --kg-inset-bottom: 96px; }
+
+/* ---- source picker (build wizard) ---- */
+.picker-wrap { display: grid; gap: 12px; }
+.src-list { max-height: 360px; overflow: auto; padding: 0; }
+.src-row { cursor: pointer; }
+.src-row.off { opacity: .55; cursor: default; }
+.drop.small { padding: 22px 18px; gap: 6px; }
+.drop.small .disc { width: 40px; height: 40px; }
+.drop.off { opacity: .6; pointer-events: none; }
+.chip.ocr { color: var(--st-needs); }
+
+/* ---- reader editing ---- */
+.doc-edit { width: 100%; min-height: 60vh; padding: 16px 18px; border-radius: 18px; border: 1px solid var(--field-line); background: var(--field); color: var(--fg); font-family: var(--font-mono); font-size: 13px; line-height: 1.55; resize: vertical; }
+.doc-edit:focus { border-color: var(--field-focus); box-shadow: 0 0 0 3px var(--halo); }
+.md h1, .md h2, .md h3, .md h4 { font-weight: 650; letter-spacing: -.01em; margin-block: 18px 6px; }
+.md h1 { font-size: 24px; } .md h2 { font-size: 19px; } .md h3 { font-size: 16px; } .md h4 { font-size: 14.5px; }
+.md p, .md li { font-size: 15px; line-height: 1.65; text-wrap: pretty; }
+.md ul, .md ol { padding-inline-start: 22px; display: grid; gap: 4px; }
+.md blockquote { margin: 0; padding: 8px 14px; border-inline-start: 3px solid var(--fg3); color: var(--fg2); }
+.md pre { padding: 12px 14px; border-radius: 14px; background: var(--code); color: var(--code-fg); font-family: var(--font-mono); font-size: 12.5px; overflow: auto; }
+.md code { font-family: var(--font-mono); font-size: .92em; background: var(--code); padding: .05em .3em; border-radius: 4px; }
+.md table { border-collapse: collapse; font-size: 13.5px; } .md td, .md th { border: 1px solid var(--card-line); padding: 6px 10px; text-align: start; }
+.md hr { border: 0; border-block-start: 1px solid var(--card-line); }
+.md .unit { display: block; margin-block: 14px 4px; font-size: 11.5px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--fg3); }

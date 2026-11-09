@@ -1,25 +1,78 @@
 import { useEffect, useRef, useState } from "react";
 import type { Source, SourceChunk } from "@mastery/shared";
-import { CloseButton } from "@mastery/ui/glass";
+import { CloseButton, Icon } from "@mastery/ui/glass";
 import { api } from "../api";
+import { Markdown } from "../components/Markdown";
 import { Spinner } from "../components/bits";
 
-/** The in-app reader. Opened from a reading suggestion, it lands on the exact passage. */
-export function ReaderSheet({ sourceId, chunk, sources, onClose }: { sourceId: string; chunk?: number; sources: Source[]; onClose: () => void }) {
+interface Props {
+  sourceId: string;
+  chunk?: number;
+  sources: Source[];
+  onClose: () => void;
+  reload?: () => Promise<void>;
+  notify?: (text: string, opts?: { error?: boolean }) => void;
+}
+
+/**
+ * The in-app reader. Opened from a reading suggestion it lands on the exact passage; opened from
+ * the library it shows the whole Markdown page, which can be edited in place. The page is what the
+ * course builder and the grader read, so an edit here changes what they see next.
+ */
+export function ReaderSheet({ sourceId, chunk, sources, onClose, reload, notify }: Props) {
   const source = sources.find((s) => s.id === sourceId);
   const [chunks, setChunks] = useState<SourceChunk[] | null>(null);
+  const [markdown, setMarkdown] = useState<string | null>(null);
+  const [mode, setMode] = useState<"passages" | "page" | "edit">(chunk !== undefined ? "passages" : "page");
+  const [draft, setDraft] = useState("");
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const hit = useRef<HTMLElement>(null);
-  useEffect(() => { api.chunks(sourceId).then((r) => setChunks(r.chunks)).catch((e) => setError(e instanceof Error ? e.message : String(e))); }, [sourceId]);
-  useEffect(() => { if (chunks && hit.current) hit.current.scrollIntoView({ block: "start" }); }, [chunks]);
+
+  useEffect(() => {
+    api.chunks(sourceId).then((r) => setChunks(r.chunks)).catch((e) => setError(e instanceof Error ? e.message : String(e)));
+    api.markdown(sourceId).then((r) => { setMarkdown(r.markdown); setDraft(r.markdown); }).catch(() => undefined);
+  }, [sourceId]);
+  useEffect(() => { if (mode === "passages" && chunks && hit.current) hit.current.scrollIntoView({ block: "start" }); }, [chunks, mode]);
+
+  async function save() {
+    setSaving(true);
+    try {
+      await api.saveMarkdown(sourceId, draft);
+      setMarkdown(draft);
+      setChunks((await api.chunks(sourceId)).chunks);
+      await reload?.();
+      notify?.("Saved. The builder and grader read this version from now on.");
+      setMode("page");
+    } catch (e) {
+      notify?.(e instanceof Error ? e.message : String(e), { error: true });
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <>
-      <div className="sheet-bar"><CloseButton onClose={onClose} /></div>
+      <div className="sheet-bar">
+        <CloseButton onClose={onClose} />
+        <span className="grow" />
+        <div className="seg" role="group" aria-label="View">
+          <button type="button" aria-pressed={mode === "page"} onClick={() => setMode("page")}>Page</button>
+          <button type="button" aria-pressed={mode === "passages"} onClick={() => setMode("passages")}>Passages</button>
+          <button type="button" aria-pressed={mode === "edit"} onClick={() => { setDraft(markdown ?? ""); setMode("edit"); }} disabled={markdown === null}><Icon name="file" small />Edit</button>
+        </div>
+      </div>
       <h2 className="sheet-title" id="reader-title">{source?.title ?? "Source"}</h2>
-      {source && <p className="lede">{source.origin}{source.pages ? ` · ${source.pages} pages` : ""} · {source.chunks} passages</p>}
+      {source && (
+        <p className="lede">
+          {source.origin}{source.pages ? ` · ${source.pages} ${source.kind === "pptx" ? "slides" : "pages"}` : ""} · {source.chunks} passages · {source.method === "ocr" ? "transcribed by the model" : source.method === "mixed" ? "partly transcribed" : "text layer"}
+          {source.edited ? ` · edited ${new Date(source.edited).toLocaleDateString()}` : ""}
+          {source.needsOcr?.length ? ` · ${source.needsOcr.length} scanned pages not yet transcribed` : ""}
+        </p>
+      )}
       {error && <p className="form-error" role="alert">{error}</p>}
-      {!chunks && !error && <Spinner label="Opening…" />}
-      {chunks && (
+      {mode === "page" && (markdown === null ? <Spinner label="Opening…" /> : <section className="glass doc-chunk"><Markdown text={markdown} /></section>)}
+      {mode === "passages" && (!chunks ? <Spinner label="Opening…" /> : (
         <div className="doc">
           {chunks.map((c) => (
             <section key={c.index} ref={c.index === chunk ? hit : undefined} className={`glass doc-chunk${c.index === chunk ? " hit" : ""}`} aria-label={c.locator}>
@@ -27,6 +80,17 @@ export function ReaderSheet({ sourceId, chunk, sources, onClose }: { sourceId: s
               <p>{c.text}</p>
             </section>
           ))}
+        </div>
+      ))}
+      {mode === "edit" && (
+        <div className="form-stack glass">
+          <p className="field-hint">Plain Markdown. Lines like <code>[[page 12]]</code> mark where a page starts in the original; keep them if you want reading suggestions to name the right page.</p>
+          <textarea className="doc-edit" value={draft} onChange={(e) => setDraft(e.target.value)} spellCheck={false} aria-label="Source Markdown" />
+          <div className="btn-row">
+            <button type="button" className="cta auto" disabled={saving || draft === markdown} onClick={() => void save()}>{saving ? "Saving…" : "Save"}</button>
+            <button type="button" className="cta ghost auto" disabled={saving} onClick={() => setMode("page")}>Cancel</button>
+            <span className="hint">{draft.length.toLocaleString()} characters</span>
+          </div>
         </div>
       )}
     </>

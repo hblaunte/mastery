@@ -2,7 +2,8 @@ import { useRef, useState, type CSSProperties } from "react";
 import type { AppState, Source } from "@mastery/shared";
 import { Icon } from "@mastery/ui/glass";
 import { formatCount, shortAge } from "@mastery/ui";
-import { api } from "../api";
+import { api, watchJob } from "../api";
+import { ACCEPT, sizeLabel } from "../components/SourcePicker";
 
 interface Props {
   state: AppState | null;
@@ -13,8 +14,6 @@ interface Props {
   onBuild: (sourceIds: string[]) => void;
 }
 
-const ACCEPT = ".pdf,.md,.markdown,.txt,.html,.htm,.docx,application/pdf,text/markdown,text/plain,text/html,application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-
 /** The library is a peer of "Begin session", never a step before it. Reading before attempting is the habit this is built to break. */
 export function Library({ state, heroStyle, reload, notify, onRead, onBuild }: Props) {
   const sources = state?.sources ?? [];
@@ -22,7 +21,22 @@ export function Library({ state, heroStyle, reload, notify, onRead, onBuild }: P
   const [busy, setBusy] = useState<string | null>(null);
   const [url, setUrl] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [ocring, setOcring] = useState<Record<string, string>>({});
   const input = useRef<HTMLInputElement>(null);
+
+  async function transcribe(s: Source) {
+    setOcring((o) => ({ ...o, [s.id]: "Starting…" }));
+    try {
+      const job = await api.ocr(s.id);
+      const done = await watchJob(job.id, (ev) => setOcring((o) => ({ ...o, [s.id]: ev.message })));
+      await reload();
+      notify(done.status === "done" ? done.events.at(-1)?.message ?? "Transcribed." : done.error ?? "Transcription failed.", { error: done.status !== "done" });
+    } catch (e) {
+      notify(e instanceof Error ? e.message : String(e), { error: true });
+    } finally {
+      setOcring((o) => { const n = { ...o }; delete n[s.id]; return n; });
+    }
+  }
 
   async function addFiles(files: File[]) {
     if (!files.length) return;
@@ -71,7 +85,7 @@ export function Library({ state, heroStyle, reload, notify, onRead, onBuild }: P
       <section className="hero enter" style={heroStyle}>
         <span className="overline">Library</span>
         <p className="big"><span className="num">{sources.length}</span><span className="unit">{sources.length === 1 ? "source" : "sources"}</span></p>
-        <span className="hero-sub">Nothing here is sent anywhere until you build a course or grade a session. The reading list only attaches to items you missed.</span>
+        <span className="hero-sub">Every source becomes a Markdown page in your data folder, with the original kept beside it. Nothing is sent anywhere until you build a course or grade a session, and reading suggestions only attach to items you missed.</span>
         <div className="hero-ctas">
           <button type="button" className="pill prime" data-tour="build" disabled={!sources.length || !!busy} onClick={() => onBuild(buildIds)}>
             <Icon name="sparkle" small />{selected.size ? `Build a course from ${selected.size}` : "Build a course"}
@@ -89,7 +103,7 @@ export function Library({ state, heroStyle, reload, notify, onRead, onBuild }: P
         >
           <span className="disc ctrl"><Icon name="upload" /></span>
           <strong>{busy ?? "Drop sources here, or click to choose"}</strong>
-          <span>PDF, Markdown, text, HTML or DOCX, up to 60 MB each. Text is extracted on your machine and kept in the data folder.</span>
+          <span>PDF, DOCX, PPTX, XLSX, EPUB, Markdown, text or HTML, up to 60 MB each. Text is extracted on your machine into a Markdown page you can open and edit. Scanned PDFs are transcribed with the model on request.</span>
           <input ref={input} type="file" multiple accept={ACCEPT} onChange={(e) => { void addFiles([...(e.target.files ?? [])]); e.target.value = ""; }} />
         </label>
 
@@ -117,10 +131,15 @@ export function Library({ state, heroStyle, reload, notify, onRead, onBuild }: P
                   <button type="button" className="link-like row-main" onClick={() => onRead(s.id)}>
                     <span className="row-title">{s.title}</span>
                     <span className="row-sub">
-                      {s.pages ? `${s.pages} pages · ` : ""}{Math.round(s.chars / 1000).toLocaleString()}k characters · {s.chunks} passages · {shortAge(s.added)} ago
+                      {sizeLabel(s)} · {shortAge(s.added)} ago{s.method === "ocr" ? " · transcribed" : s.method === "mixed" ? " · partly transcribed" : ""}{s.edited ? " · edited" : ""}
                       {s.warning ? ` · ${s.warning}` : ""}
                     </span>
                   </button>
+                  {s.needsOcr?.length ? (
+                    <button type="button" className="cta ghost auto small" disabled={!!ocring[s.id] || state?.key.mode === "none"} title={state?.key.mode === "none" ? "Add an API key in Settings first" : undefined} onClick={() => void transcribe(s)}>
+                      {ocring[s.id] ?? `Transcribe ${s.needsOcr.length} pages`}
+                    </button>
+                  ) : null}
                   <button type="button" className="ibtn ctrl" aria-label={`Remove ${s.title}`} onClick={() => void remove(s)}><Icon name="trash" small /></button>
                 </li>
               ))}

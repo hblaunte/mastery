@@ -6,8 +6,12 @@ import { PORT, REPO_ROOT, WEB_DIST, routingSummary } from "./config.js";
 import { app } from "./app.js";
 import { keyStatus } from "./keys.js";
 import * as store from "./store.js";
+import * as library from "./library.js";
 
 store.ensureDirs();
+library.ensureLibrary();
+const migrated = library.migrateLegacy();
+if (migrated) console.log(`  moved ${migrated} sources into data/library`);
 
 // In production the built web app is served from the same origin; in development Vite proxies /api.
 if (existsSync(WEB_DIST)) {

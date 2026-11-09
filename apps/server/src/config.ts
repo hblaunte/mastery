@@ -41,7 +41,7 @@ export const STRONG = process.env.MASTERY_MODEL ?? "claude-opus-5-5";
 export const CHEAP = process.env.MASTERY_MODEL_CHEAP ?? "claude-sonnet-5-5";
 
 export type Effort = "low" | "medium" | "high" | "xhigh" | "max";
-export type JobKind = "essay" | "experiment" | "recall" | "calibration" | "outline" | "items";
+export type JobKind = "essay" | "experiment" | "recall" | "calibration" | "outline" | "items" | "ocr";
 
 const TABLE: Record<JobKind, { model: string; effort: Effort; prompt: string }> = {
   essay: { model: STRONG, effort: "high", prompt: "grade-essay.md" },
@@ -50,6 +50,8 @@ const TABLE: Record<JobKind, { model: string; effort: Effort; prompt: string }> 
   calibration: { model: CHEAP, effort: "medium", prompt: "calibration-review.md" },
   outline: { model: STRONG, effort: "high", prompt: "build-outline.md" },
   items: { model: STRONG, effort: "high", prompt: "build-items.md" },
+  // Transcribing scanned pages is reading, not judgement: the cheap tier at low effort.
+  ocr: { model: CHEAP, effort: "low", prompt: "" },
 };
 
 export function route(kind: JobKind): { model: string; effort: Effort; prompt: string } {

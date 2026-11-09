@@ -144,7 +144,7 @@ export default function App() {
       )}
       {sheet?.kind === "reader" && (
         <Sheet labelledBy="reader-title" closing={closing} onClose={close} width={820}>
-          <ReaderSheet sourceId={sheet.sourceId} chunk={sheet.chunk} sources={state?.sources ?? []} onClose={close} />
+          <ReaderSheet sourceId={sheet.sourceId} chunk={sheet.chunk} sources={state?.sources ?? []} onClose={close} reload={reload} notify={show} />
         </Sheet>
       )}
       {sheet?.kind === "build" && (

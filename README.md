@@ -2,7 +2,7 @@
 
 Build your own course from your own sources, then be quizzed on it until you have mastered it.
 
-Drop in PDFs, Markdown, DOCX, HTML or a URL. Mastery reads them, outlines the topics in the order
+Drop in PDFs (scanned ones too), DOCX, PPTX decks, XLSX, EPUB, Markdown, HTML or a URL. Mastery reads them into Markdown pages you can open and edit, outlines the topics in the order
 they depend on each other, and writes quiz items for each: multiple choice, free recall, essays
 with rubrics, hands-on experiments where the material allows. Every item points back to the
 passage it came from.

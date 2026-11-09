@@ -12,7 +12,10 @@
 
 // ---------------------------------------------------------------- sources
 
-export type SourceKind = "pdf" | "markdown" | "text" | "html" | "docx" | "epub" | "url";
+export type SourceKind = "pdf" | "markdown" | "text" | "html" | "docx" | "pptx" | "xlsx" | "epub" | "url";
+
+/** How the Markdown was produced. "ocr" means a model transcribed scanned pages; "mixed" means some pages were. */
+export type ExtractionMethod = "text" | "ocr" | "mixed" | "none";
 
 export interface Source {
   id: string;
@@ -24,10 +27,17 @@ export interface Source {
   chars: number;
   pages?: number;
   added: string;
-  /** Number of text chunks the extractor produced. The text itself is fetched separately. */
+  /** Number of passages the chunker produces from the Markdown. The text itself is fetched separately. */
   chunks: number;
+  /** SHA-256 of the original bytes; the same file dropped twice is recognised rather than duplicated. */
+  hash: string;
+  method: ExtractionMethod;
+  /** Pages (or slides) that had no text layer and need a model to transcribe them. Empty once OCR has run. */
+  needsOcr?: number[];
   /** Set when text extraction produced nothing usable (scanned PDF, empty file). */
   warning?: string;
+  /** Last time the Markdown was edited by hand in the reader. */
+  edited?: string;
 }
 
 export interface SourceChunk {
@@ -115,7 +125,7 @@ export interface JobEvent {
 
 export interface Job {
   id: string;
-  kind: "build-course";
+  kind: "build-course" | "ocr";
   status: JobStatus;
   created: string;
   finished?: string;
@@ -123,6 +133,7 @@ export interface Job {
   error?: string;
   /** Set when done. */
   courseId?: string;
+  sourceId?: string;
   usage: Usage;
 }
 
@@ -360,6 +371,9 @@ export interface AppState {
  * POST /api/library     multipart/form-data, field "files" (many)  → Source[]
  * POST /api/library/url { url }           → Source
  * GET  /api/library/:id/text?chunk=n      → SourceChunk | { chunks: SourceChunk[] }
+ * GET  /api/library/:id/markdown          → { markdown }   the editable source page (frontmatter stripped)
+ * PUT  /api/library/:id/markdown { markdown } → Source     re-chunks; courses built later see the edit
+ * POST /api/library/:id/ocr               → Job            transcribe the pages in needsOcr with the model
  * DELETE /api/library/:id
  * GET  /api/courses                       → CourseSummary[]
  * GET  /api/courses/:id                   → Course (items public-safe)
