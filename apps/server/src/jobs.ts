@@ -106,7 +106,8 @@ export function startBuild(req: BuildCourseRequest, hint?: string | null): Job {
       job.usage = usage;
       job.courseId = course.id;
       job.status = "done";
-      emit(`Built "${course.title}": ${course.topics.length} topics, ${course.items.length} items`, 1);
+      // The pipeline's own final line already reports the build; this one closes the job in the learner's language.
+      emit(t("Built {title}: {topics} topics, {items} items", { title: `"${course.title}"`, topics: course.topics.length, items: course.items.length }), 1);
     } catch (err) {
       job.status = "failed";
       job.error = err instanceof Error ? err.message : String(err);

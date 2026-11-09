@@ -59,6 +59,7 @@ const ZH_HANS: Record<string, string> = {
   "{title} has no usable items yet; it stays in the course so you can rebuild it": "{title} 暂无可用题目；该主题保留在课程中，可稍后重建",
   "Built {title}: {topics} topics, {items} items, {calls} model calls, about ${cost}": "已生成 {title}：{topics} 个主题，{items} 道题，{calls} 次模型调用，约 ${cost}",
   "Dropped an item with no prompt in {topic}": "已移除 {topic} 中一道没有题干的题目",
+  "Built {title}: {topics} topics, {items} items": "已生成 {title}：{topics} 个主题，{items} 道题",
   "Starting": "正在开始",
   // jobs.ts
   "Transcribing {n} scanned pages": "正在识别 {n} 页扫描件",
@@ -104,6 +105,7 @@ const ZH_HANT: Record<string, string> = {
   "{title} has no usable items yet; it stays in the course so you can rebuild it": "{title} 暫無可用題目；該主題保留在課程中，可稍後重建",
   "Built {title}: {topics} topics, {items} items, {calls} model calls, about ${cost}": "已建立 {title}：{topics} 個主題，{items} 道題，{calls} 次模型呼叫，約 ${cost}",
   "Dropped an item with no prompt in {topic}": "已移除 {topic} 中一道沒有題幹的題目",
+  "Built {title}: {topics} topics, {items} items": "已建立 {title}：{topics} 個主題，{items} 道題",
   "Starting": "正在開始",
   "Transcribing {n} scanned pages": "正在辨識 {n} 頁掃描件",
   "Transcribed {n} pages · about ${cost}": "已辨識 {n} 頁 · 約 ${cost}",

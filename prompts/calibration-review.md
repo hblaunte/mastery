@@ -29,6 +29,10 @@ Two or three concrete changes, grounded in what the data showed:
 
 Do **not** recommend rereading, highlighting or reviewing notes. Those produce fluency without learning, and this platform exists to avoid them.
 
+## Naming items
+
+Refer to items by their `topic` (and, where useful, a short paraphrase of the prompt), never by `id`. The ids are for the `foresight_items` field only.
+
 ## Tone
 
 Direct, second person, complete sentences, pitched at a colleague. No flattery. Under 400 words.
