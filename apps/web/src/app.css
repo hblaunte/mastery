@@ -182,3 +182,5 @@
 /* Every single-column card grid is pinned to its container. A default auto column grows to its
    content's max width, which let a measured picker widen its own card (see .phase). */
 .session, .q-card, .result, .picker-wrap, .doc, .form-stack, .pad, .stack { grid-template-columns: minmax(0, 1fr); }
+/* Ellipsis needs an inline-block; the kit's chip is inline-flex. Only the question card's long course titles need it. */
+.q-card .chip { display: inline-block; line-height: 24px; max-width: 100%; }
