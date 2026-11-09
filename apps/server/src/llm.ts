@@ -41,13 +41,12 @@ export function readPrompt(name: string): string {
  * edited without a restart. The result is deterministic for a given settings file, which is what
  * makes it cacheable.
  */
-export function systemFor(kind: JobKind): string {
+export function systemFor(kind: JobKind, languageNote = ""): string {
   const { prompt } = route(kind);
   const background = loadSettings().background.trim();
-  const preamble = readPrompt("_system.md").replace(
-    "{{background}}",
-    background || "The learner has not described their background. Grade against the sources alone.",
-  );
+  const preamble = readPrompt("_system.md")
+    .replace("{{background}}", background || "The learner has not described their background. Grade against the sources alone.")
+    .replace("{{language}}", languageNote);
   return `${preamble}\n\n---\n\n${readPrompt(prompt)}`;
 }
 
@@ -58,9 +57,10 @@ export async function callStructured<T>(opts: {
   user: string;
   schema: Record<string, unknown>;
   maxTokens?: number;
+  languageNote?: string;
 }): Promise<{ result: T; usage: CallUsage }> {
   const { model, effort } = route(opts.kind);
-  const system = systemFor(opts.kind);
+  const system = systemFor(opts.kind, opts.languageNote);
   let message: Anthropic.Message;
   try {
     message = await client()

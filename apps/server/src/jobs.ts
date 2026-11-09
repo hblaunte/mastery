@@ -9,6 +9,7 @@ import { buildCourse } from "./generate/index.js";
 import { mergeOcr, ocrPdfPages } from "./ingest/index.js";
 import * as library from "./library.js";
 import { newId, nowIso } from "./ids.js";
+import { languageNote, resolveLang, translator } from "./i18n.js";
 import { client, emptyUsage, summariseUsage } from "./llm.js";
 import * as store from "./store.js";
 
@@ -43,8 +44,9 @@ function open(kind: Job["kind"]): { job: Job; emit: (message: string, progress: 
 }
 
 /** Transcribe a PDF's scanned pages with the model and merge them into its Markdown page. */
-export function startOcr(sourceId: string): Job {
+export function startOcr(sourceId: string, hint?: string | null): Job {
   const { job, emit, finish } = open("ocr");
+  const t = translator(resolveLang(store.loadSettings().language, hint));
   job.sourceId = sourceId;
   void (async () => {
     job.status = "running";
@@ -52,20 +54,20 @@ export function startOcr(sourceId: string): Job {
       const source = library.getSource(sourceId);
       const raw = library.getRaw(sourceId);
       const markdown = library.getMarkdown(sourceId);
-      if (!source || !raw || markdown === null) throw new Error("The source or its original file is missing.");
+      if (!source || !raw || markdown === null) throw new Error(t("The source or its original file is missing."));
       const pages = source.needsOcr ?? [];
-      emit(`Transcribing ${pages.length} scanned pages`, 0.02);
+      emit(t("Transcribing {n} scanned pages", { n: pages.length }), 0.02);
       const { model } = route("ocr");
       const result = await ocrPdfPages(raw.bytes, pages, { client: client(), model, onEvent: emit });
       const merged = mergeOcr(markdown, result.text);
       library.updateMarkdown(sourceId, merged, { method: pages.length >= (source.pages ?? 0) ? "ocr" : "mixed", needsOcr: undefined, warning: undefined }, "ocr");
       job.usage = summariseUsage(result.usage.map((u: { input_tokens: number; output_tokens: number; cache_creation_input_tokens?: number | null; cache_read_input_tokens?: number | null }) => ({ model: result.model, effort: "low" as const, input: u.input_tokens, output: u.output_tokens, cacheWrite: u.cache_creation_input_tokens ?? 0, cacheRead: u.cache_read_input_tokens ?? 0 })));
       job.status = "done";
-      emit(`Transcribed ${pages.length} pages · about $${job.usage.estimatedCost.toFixed(2)}`, 1);
+      emit(t("Transcribed {n} pages · about ${cost}", { n: pages.length, cost: job.usage.estimatedCost.toFixed(2) }), 1);
     } catch (err) {
       job.status = "failed";
       job.error = err instanceof Error ? err.message : String(err);
-      emit(`Failed: ${job.error}`, 1);
+      emit(t("Failed: {error}", { error: job.error }), 1);
     } finally {
       finish();
     }
@@ -73,12 +75,14 @@ export function startOcr(sourceId: string): Job {
   return job;
 }
 
-export function startBuild(req: BuildCourseRequest): Job {
+export function startBuild(req: BuildCourseRequest, hint?: string | null): Job {
   const { job, emit, finish } = open("build-course");
+  const settings = store.loadSettings();
+  const t = translator(resolveLang(settings.language, hint));
   const controller = new AbortController();
   void (async () => {
     job.status = "running";
-    emit("Starting", 0);
+    emit(t("Starting"), 0);
     try {
       const { model, effort } = route("outline");
       const { course, usage } = await buildCourse(req, {
@@ -94,6 +98,8 @@ export function startBuild(req: BuildCourseRequest): Job {
         onEvent: emit,
         newId,
         signal: controller.signal,
+        t,
+        languageNote: languageNote(settings.language, hint),
       });
       store.saveCourse(course);
       library.log(`build | ${course.title} | ${course.topics.length} topics · ${course.items.length} items | about $${usage.estimatedCost.toFixed(2)}`);
@@ -104,7 +110,7 @@ export function startBuild(req: BuildCourseRequest): Job {
     } catch (err) {
       job.status = "failed";
       job.error = err instanceof Error ? err.message : String(err);
-      emit(`Failed: ${job.error}`, 1);
+      emit(t("Failed: {error}", { error: job.error }), 1);
     } finally {
       finish();
     }

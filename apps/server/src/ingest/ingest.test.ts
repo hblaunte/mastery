@@ -4,7 +4,7 @@ import { zipSync, strToU8 } from "fflate";
 import { PDFDocument, StandardFonts } from "pdf-lib";
 import type Anthropic from "@anthropic-ai/sdk";
 import { htmlToText, decodeEntities } from "./html.js";
-import { chunkText, pageMarker, unitMarker } from "./chunk.js";
+import { chunkText, cjkRatio, estimateTokens, pageMarker, unitMarker } from "./chunk.js";
 import { extractFile, detectKind, legacyKind, describePages, assertSafeUrl, isPrivateAddress, UrlError } from "./extract.js";
 import { ocrPdfPages, mergeOcr, batchPages, normaliseBatch, OcrError } from "./ocr.js";
 
@@ -607,4 +607,31 @@ test("url guard: refuses non-http schemes and private or loopback hosts", async 
   assert.equal(isPrivateAddress("100.64.0.1"), true);
   const ok = await assertSafeUrl("https://93.184.216.34/page");
   assert.equal(ok.hostname, "93.184.216.34");
+});
+
+// ---------------------------------------------------------------- Chinese text
+
+test("chunk: Chinese prose splits at full-width sentence ends and lands near the token budget", () => {
+  const sentence = "间隔重复之所以有效，是因为提取记忆的努力本身会加强记忆痕迹；重读只会产生熟悉感。";
+  const text = "# 第一章 检索练习\n\n" + Array.from({ length: 400 }, () => sentence).join("");
+  const chunks = chunkText(text);
+  assert.ok(chunks.length >= 5, `expected several chunks, got ${chunks.length}`);
+  for (const c of chunks) {
+    // Chinese target is scaled down (6000 / 2.5 = 2400 chars) so a passage stays near the English token budget.
+    assert.ok(c.text.length <= 2400 + 400, `chunk too long: ${c.text.length}`);
+    assert.ok(c.text.length > 100, `a chunk that is only a heading: ${JSON.stringify(c.text)}`);
+    // No chunk starts mid-clause: the overlap tail is cut at CJK punctuation.
+    assert.ok(!/^[，、：]/.test(c.text), `chunk starts with a trailing mark: ${c.text.slice(0, 8)}`);
+  }
+  assert.equal(chunks[0]!.locator, "第一章 检索练习");
+  assert.ok(chunks.every((c) => c.text.includes("间隔重复")));
+});
+
+test("chunk: cjkRatio and estimateTokens", () => {
+  assert.equal(cjkRatio("hello world"), 0);
+  assert.ok(cjkRatio("记忆痕迹会加强") > 0.99);
+  assert.ok(Math.abs(cjkRatio("记忆 memory 痕迹 trace") - 4 / 15) < 0.02); // 4 CJK characters among 15 letters
+  assert.equal(estimateTokens("记忆痕迹"), 4);
+  assert.equal(estimateTokens("abcdefgh"), 2);
+  assert.equal(estimateTokens("记忆abcd"), 3);
 });

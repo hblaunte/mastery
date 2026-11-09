@@ -29,6 +29,10 @@ export interface BuildDeps {
   onEvent(message: string, progress: number): void;
   newId(prefix: string): string;
   signal?: AbortSignal;
+  /** Translates progress messages for the learner; defaults to English. */
+  t?: (template: string, vars?: Record<string, string | number>) => string;
+  /** A sentence fixing the output language, substituted for {{language}} in the prompts. */
+  languageNote?: string;
 }
 
 export const TOPIC_CAP: Record<Depth, number> = { light: 6, standard: 10, deep: 16 };
@@ -128,7 +132,7 @@ async function callJson<T>(deps: BuildDeps, usage: Usage, o: CallOpts): Promise<
 async function readPrompt(deps: BuildDeps, name: string): Promise<string> {
   const path = join(deps.promptsDir, name);
   try {
-    const text = (await readFile(path, "utf8")).trim();
+    const text = (await readFile(path, "utf8")).trim().replace("{{language}}", deps.languageNote ?? "");
     if (!text) throw new Error("empty");
     return text;
   } catch {
@@ -202,6 +206,7 @@ export async function buildCourse(req: BuildCourseRequest, deps: BuildDeps): Pro
   const usage = emptyUsage();
   const depth: Depth = req.depth in TOPIC_CAP ? req.depth : "standard";
   let progress = 0;
+  const t = deps.t ?? ((template: string, vars: Record<string, string | number> = {}) => template.replace(/\{(\w+)\}/g, (_, k: string) => (k in vars ? String(vars[k]) : `{${k}}`)));
   const emit = (message: string, p?: number) => { if (p !== undefined) progress = Math.max(progress, Math.min(1, p)); deps.onEvent(message, progress); };
   const checkAborted = () => { if (deps.signal?.aborted) throw new Error("The build was cancelled."); };
 
@@ -215,14 +220,14 @@ export async function buildCourse(req: BuildCourseRequest, deps: BuildDeps): Pro
     // ------------------------------------------------ 1. load sources
     const ids = Array.from(new Set(req.sourceIds ?? []));
     if (!ids.length) throw new Error("Choose at least one source to build from.");
-    emit(`Reading ${ids.length} source${ids.length === 1 ? "" : "s"}`, 0.01);
+    emit(t(ids.length === 1 ? "Reading {n} source" : "Reading {n} sources", { n: ids.length }), 0.01);
     const loaded: Loaded[] = [];
     for (let i = 0; i < ids.length; i++) {
       checkAborted();
       const { source, chunks } = await deps.readSource(ids[i]!);
       const usable = chunks.filter((c) => c.text && c.text.trim());
-      emit(`Reading ${quote(source.title)} (${i + 1} of ${ids.length})`, 0.01 + 0.07 * ((i + 1) / ids.length));
-      if (!usable.length) { emit(`Skipping ${quote(source.title)}: it has no extractable text`); continue; }
+      emit(t("Reading {title} ({i} of {n})", { title: quote(source.title), i: i + 1, n: ids.length }), 0.01 + 0.07 * ((i + 1) / ids.length));
+      if (!usable.length) { emit(t("Skipping {title}: it has no extractable text", { title: quote(source.title) })); continue; }
       loaded.push({ source, chunks: usable });
     }
     if (!loaded.length) throw new Error("None of the selected sources contain extractable text.");
@@ -239,7 +244,7 @@ export async function buildCourse(req: BuildCourseRequest, deps: BuildDeps): Pro
         l.summaries = new Array<string>(l.chunks.length).fill("");
         for (let i = 0; i < l.chunks.length; i += DIGEST_BATCH) batches.push({ loaded: l, chunks: l.chunks.slice(i, i + DIGEST_BATCH) });
       }
-      emit(`Summarising ${totalChunks} chunks (${Math.round(totalChars / 1000)}k characters) in ${batches.length} passes`, 0.09);
+      emit(t("Summarising {chunks} chunks ({k}k characters) in {passes} passes", { chunks: totalChunks, k: Math.round(totalChars / 1000), passes: batches.length }), 0.09);
       const digestSystem = "You summarise chunks of a document for a course designer who will decide which parts to teach. For each chunk, write one sentence of at most 30 words naming the concepts, claims, procedures or results it contains. State what is there; do not evaluate it. Return JSON matching the schema, one entry per chunk, in order.";
       let doneBatches = 0;
       const digestOne = async (b: { loaded: Loaded; chunks: SourceChunk[] }) => {
@@ -258,7 +263,7 @@ export async function buildCourse(req: BuildCourseRequest, deps: BuildDeps): Pro
           if (c && typeof s.summary === "string") b.loaded.summaries![pos.get(c.index) ?? s.index + base] = s.summary.trim();
         }
         doneBatches++;
-        emit(`Summarised ${Math.min(doneBatches * DIGEST_BATCH, totalChunks)} of ${totalChunks} chunks`, 0.09 + 0.13 * (doneBatches / batches.length));
+        emit(t("Summarised {done} of {total} chunks", { done: Math.min(doneBatches * DIGEST_BATCH, totalChunks), total: totalChunks }), 0.09 + 0.13 * (doneBatches / batches.length));
       };
       await runPool(batches, ITEM_CONCURRENCY, digestOne, ac);
     }
@@ -266,7 +271,7 @@ export async function buildCourse(req: BuildCourseRequest, deps: BuildDeps): Pro
     // ------------------------------------------------ 2. outline
     checkAborted();
     const cap = TOPIC_CAP[depth];
-    emit(`Outlining up to ${cap} topics from ${loaded.length} source${loaded.length === 1 ? "" : "s"}`, 0.23);
+    emit(t(loaded.length === 1 ? "Outlining up to {cap} topics from {n} source" : "Outlining up to {cap} topics from {n} sources", { cap, n: loaded.length }), 0.23);
     const outlineSystem = await readPrompt(deps, "build-outline.md");
     const digestMode = loaded.some((l) => l.summaries);
     const outlineUser = [
@@ -290,7 +295,7 @@ export async function buildCourse(req: BuildCourseRequest, deps: BuildDeps): Pro
 
     const courseId = deps.newId("course");
     const rawTopics = outline.topics.slice(0, cap);
-    if (outline.topics.length > cap) emit(`Keeping the first ${cap} of ${outline.topics.length} proposed topics (depth ${depth})`);
+    if (outline.topics.length > cap) emit(t("Keeping the first {cap} of {n} proposed topics (depth {depth})", { cap, n: outline.topics.length, depth }));
 
     // Titles → ids; drop unresolved prereqs; break cycles keeping the first edge.
     const topics: Topic[] = rawTopics.map((t) => ({
@@ -311,11 +316,11 @@ export async function buildCourse(req: BuildCourseRequest, deps: BuildDeps): Pro
       const topic = topics[i]!;
       for (const title of raw.prereq ?? []) {
         const pid = idByTitle.get(norm(String(title)));
-        if (!pid) { emit(`Dropped an unknown prerequisite ${quote(String(title))} from ${quote(topic.title)}`); continue; }
+        if (!pid) { emit(t("Dropped an unknown prerequisite {title} from {topic}", { title: quote(String(title)), topic: quote(topic.title) })); continue; }
         if (pid === topic.id || topic.prereq.includes(pid)) continue;
         if (reaches(topic.id, pid, edges)) {
           const other = topics.find((t) => t.id === pid)!;
-          emit(`Dropped a prerequisite that would loop: ${quote(other.title)} already depends on ${quote(topic.title)}`);
+          emit(t("Dropped a prerequisite that would loop: {other} already depends on {topic}", { other: quote(other.title), topic: quote(topic.title) }));
           continue;
         }
         topic.prereq.push(pid);
@@ -325,7 +330,7 @@ export async function buildCourse(req: BuildCourseRequest, deps: BuildDeps): Pro
     });
     const ordered = topoOrder(topics);
     const uncited = ordered.filter((t) => !t.grounding.length).length;
-    emit(`Outlined ${ordered.length} topic${ordered.length === 1 ? "" : "s"}${uncited ? ` (${uncited} without a cited chunk; items will search the sources)` : ""}`, 0.32);
+    emit(t(ordered.length === 1 ? "Outlined {n} topic" : "Outlined {n} topics", { n: ordered.length }) + (uncited ? t(" ({n} without a cited chunk; items will search the sources)", { n: uncited }) : ""), 0.32);
 
     // ------------------------------------------------ 3. items per topic
     const itemsSystem = await readPrompt(deps, "build-items.md");
@@ -337,7 +342,7 @@ export async function buildCourse(req: BuildCourseRequest, deps: BuildDeps): Pro
 
     const writeTopic = async (topic: Topic, i: number) => {
       checkAborted();
-      emit(`Writing items for ${quote(topic.title)} (${i + 1} of ${ordered.length})`, 0.32 + 0.63 * (doneTopics / ordered.length));
+      emit(t("Writing items for {title} ({i} of {n})", { title: quote(topic.title), i: i + 1, n: ordered.length }), 0.32 + 0.63 * (doneTopics / ordered.length));
       const grounding = selectGrounding(topic, chunkById);
       const mixLine = (Object.entries(mix) as [ItemType, number][])
         .filter(([, n]) => n > 0)
@@ -359,7 +364,7 @@ export async function buildCourse(req: BuildCourseRequest, deps: BuildDeps): Pro
       });
       results[i] = Array.isArray(out.items) ? out.items.slice(0, perTopic) : [];
       doneTopics++;
-      emit(`Wrote ${results[i]!.length} items for ${quote(topic.title)} (${doneTopics} of ${ordered.length} topics done)`, 0.32 + 0.63 * (doneTopics / ordered.length));
+      emit(t("Wrote {k} items for {title} ({done} of {n} topics done)", { k: results[i]!.length, title: quote(topic.title), done: doneTopics, n: ordered.length }), 0.32 + 0.63 * (doneTopics / ordered.length));
     };
 
     // First topic alone, so the cached system prompt is written once before the fan-out reads it.
@@ -371,10 +376,10 @@ export async function buildCourse(req: BuildCourseRequest, deps: BuildDeps): Pro
     // ------------------------------------------------ 4. validate
     checkAborted();
     const proposed = results.reduce((n, r) => n + (r?.length ?? 0), 0);
-    emit(`Checking ${proposed} items`, 0.96);
+    emit(t("Checking {n} items", { n: proposed }), 0.96);
     const items = validateItems(ordered, results, courseId, chunkById, (msg) => emit(msg));
     const emptyTopics = ordered.filter((t) => !items.some((it) => it.topicId === t.id));
-    for (const t of emptyTopics) emit(`${quote(t.title)} has no usable items yet; it stays in the course so you can rebuild it`);
+    for (const et of emptyTopics) emit(t("{title} has no usable items yet; it stays in the course so you can rebuild it", { title: quote(et.title) }));
 
     const seconds = Math.round((Date.now() - startedAt) / 100) / 10;
     const course: Course = {
@@ -387,7 +392,7 @@ export async function buildCourse(req: BuildCourseRequest, deps: BuildDeps): Pro
       created: new Date().toISOString(),
       build: { model: deps.model, usage, seconds },
     };
-    emit(`Built ${quote(course.title)}: ${ordered.length} topics, ${items.length} items, ${usage.calls} model calls, about $${usage.estimatedCost.toFixed(2)}`, 1);
+    emit(t("Built {title}: {topics} topics, {items} items, {calls} model calls, about ${cost}", { title: quote(course.title), topics: ordered.length, items: items.length, calls: usage.calls, cost: usage.estimatedCost.toFixed(2) }), 1);
     return { course, usage };
   } catch (err) {
     ac.abort();

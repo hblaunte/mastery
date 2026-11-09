@@ -8,6 +8,7 @@ import { newId, nowIso } from "./ids.js";
 import { emptyUsage, mergeUsage, summariseUsage } from "./llm.js";
 import { buildSession, isLit, updateAfterGrade } from "./scheduler.js";
 import * as store from "./store.js";
+import { languageNote, resolveLang, translator, type Translate } from "./i18n.js";
 
 export class SessionError extends Error {}
 
@@ -24,10 +25,11 @@ export function allItems(courses: Course[]): Map<string, { item: Item; course: C
   return out;
 }
 
-export function newSession(body: { courseIds?: string[]; size?: number }): SessionStart {
+export function newSession(body: { courseIds?: string[]; size?: number }, hint?: string | null): SessionStart {
   const courses = store.listCourses();
   const state = store.loadState();
   const settings = store.loadSettings();
+  const t = translator(resolveLang(settings.language, hint));
   const lookup = allItems(courses);
   const items = new Map([...lookup].map(([id, v]) => [id, v.item]));
   const size = Math.max(3, Math.min(25, body.size ?? settings.sessionSize));
@@ -38,8 +40,8 @@ export function newSession(body: { courseIds?: string[]; size?: number }): Sessi
       started: nowIso(),
       items: [],
       message: courses.length
-        ? "Nothing is due and there is no new material in the selected courses. That is the system working: come back when items come due."
-        : "No courses yet. Drop a source into the library and build one.",
+        ? t("Nothing is due and there is no new material in the selected courses. That is the system working: come back when items come due.")
+        : t("No courses yet. Drop a source into the library and build one."),
     };
   }
   return {
@@ -58,13 +60,14 @@ export function missedConceptsByItem(): Map<string, string[]> {
   return out;
 }
 
-export async function submitSession(body: SubmitRequest): Promise<SessionRecord> {
+export async function submitSession(body: SubmitRequest, hint?: string | null): Promise<SessionRecord> {
   const responses = body.responses ?? [];
-  if (!responses.length) throw new SessionError("No responses submitted.");
+  const settings = store.loadSettings();
+  const t: Translate = translator(resolveLang(settings.language, hint));
+  if (!responses.length) throw new SessionError(t("No responses submitted."));
   const courses = store.listCourses();
   const lookup = allItems(courses);
   const state = store.loadState();
-  const settings = store.loadSettings();
   const threshold = settings.graphThreshold;
 
   const missing = responses.filter((r) => !lookup.has(r.id)).map((r) => r.id);
@@ -82,7 +85,7 @@ export async function submitSession(body: SubmitRequest): Promise<SessionRecord>
     return { item, course, topic: topic?.title ?? "", response: r.response ?? "", grounding, jolPre: r.jolPre ?? null, jolPost: r.jolPost ?? null };
   });
 
-  const grades = await gradeSession(rows.map((r) => ({ item: r.item, response: r.response, topic: r.topic, course: r.course.title, grounding: r.grounding })));
+  const grades = await gradeSession(rows.map((r) => ({ item: r.item, response: r.response, topic: r.topic, course: r.course.title, grounding: r.grounding })), 4, { t, languageNote: languageNote(settings.language, hint) });
 
   const graded: GradedItem[] = rows.map((r, i) => {
     const { grade } = grades[i]!;
@@ -129,11 +132,11 @@ export async function submitSession(body: SubmitRequest): Promise<SessionRecord>
   let usage = summariseUsage(grades.map((g) => g.usage));
   if (scored.length) {
     try {
-      const { result, usage: cu } = await calibrationReview(inputs, store.calibrationHistory(), numbers);
+      const { result, usage: cu } = await calibrationReview(inputs, store.calibrationHistory(), numbers, languageNote(settings.language, hint));
       calibration = { ...calibration, foresightItems: result.foresight_items, report: result.report, recommendations: result.recommendations };
       usage = mergeUsage(usage, summariseUsage([cu]));
     } catch (err) {
-      calibration.error = err instanceof Error ? err.message : String(err);
+      calibration.error = t(err instanceof Error ? err.message : String(err));
     }
   }
 

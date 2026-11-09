@@ -51,6 +51,31 @@ interface Block {
   isHeading: boolean;
 }
 
+/** Sentence ends: Latin punctuation followed by space, or a CJK full stop, exclamation, question mark or semicolon with no space needed. */
+const SENTENCE_END = /(?<=[.!?])\s+|(?<=[。！？；])\s*/;
+
+/** Share of CJK characters (Han, Hiragana, Katakana, Hangul) in a text, 0–1, measured on a sample. */
+export function cjkRatio(text: string): number {
+  const sample = text.slice(0, 50_000);
+  let letters = 0, cjk = 0;
+  for (const ch of sample) {
+    if (/\s|[\p{P}\p{S}]/u.test(ch)) continue;
+    letters++;
+    if (/[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u.test(ch)) cjk++;
+  }
+  return letters ? cjk / letters : 0;
+}
+
+/**
+ * Rough token count for cost estimates: a CJK character is about one token, four Latin characters
+ * are about one. Good to within a factor of 1.5 across the tokenizers that matter here.
+ */
+export function estimateTokens(text: string): number {
+  let cjk = 0;
+  for (const ch of text) if (/[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u.test(ch)) cjk++;
+  return cjk + Math.ceil((text.length - cjk) / 4);
+}
+
 function splitLong(text: string, target: number): string[] {
   if (text.length <= target) return [text];
   const out: string[] = [];
@@ -60,7 +85,7 @@ function splitLong(text: string, target: number): string[] {
   const units: string[] = [];
   for (const line of text.split("\n")) {
     if (line.length <= target) { units.push(line + "\n"); continue; }
-    for (const sentence of line.split(/(?<=[.!?。])\s+/)) {
+    for (const sentence of line.split(SENTENCE_END)) {
       if (sentence.length <= target) { units.push(sentence + " "); continue; }
       for (let i = 0; i < sentence.length; i += target) units.push(sentence.slice(i, i + target) + " ");
     }
@@ -132,18 +157,21 @@ function locatorFor(blocks: Block[], hasUnits: boolean): string {
   return lo === hi ? `¶ ${lo}` : `¶ ${lo}${EN_DASH}${hi}`;
 }
 
-/** Last `n` characters of `s`, cut forward to a word boundary so it does not start mid-word. */
+/** Last `n` characters of `s`, cut forward to a word boundary (or, in CJK text, a clause boundary) so it does not start mid-word. */
 function tail(s: string, n: number): string {
   if (n <= 0 || !s) return "";
   if (s.length <= n) return s;
   let cut = s.slice(s.length - n);
-  const ws = cut.search(/\s/);
-  if (ws > 0 && ws < cut.length - 1) cut = cut.slice(ws + 1);
+  const b = cut.search(/\s|[。！？；，、：]/);
+  if (b > 0 && b < cut.length - 1) cut = cut.slice(b + 1);
   return cut.trimStart();
 }
 
 export function chunkText(text: string, opts: { target?: number; overlap?: number } = {}): SourceChunk[] {
-  const target = Math.max(200, opts.target ?? DEFAULT_TARGET);
+  // A CJK character is worth roughly four Latin ones to the model, so a passage of Chinese
+  // text is kept shorter in characters to land near the same token budget.
+  const ratio = cjkRatio(text);
+  const target = Math.max(200, Math.round((opts.target ?? DEFAULT_TARGET) / (1 + 1.5 * ratio)));
   const overlap = Math.max(0, Math.min(opts.overlap ?? DEFAULT_OVERLAP, Math.floor(target / 2)));
   if (!text || !text.trim()) return [];
 
@@ -157,8 +185,11 @@ export function chunkText(text: string, opts: { target?: number; overlap?: numbe
 
   for (const b of blocks) {
     const add = b.text.length + (cur.length ? 2 : 0);
+    // A buffer holding only headings travels with the text that follows it, however long that
+    // text is; a chunk that is nothing but a heading tells the model nothing.
+    const onlyHeadings = cur.length > 0 && cur.every((x) => x.isHeading);
     if (cur.length && b.isHeading && curLen >= target / 2) flush();
-    else if (cur.length && curLen + add > target) flush();
+    else if (cur.length && !onlyHeadings && curLen + add > target) flush();
     cur.push(b);
     curLen += b.text.length + (cur.length > 1 ? 2 : 0);
   }

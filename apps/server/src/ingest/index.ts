@@ -1,6 +1,6 @@
 export { extractFile, extractUrl, detectKind, legacyKind, titleFromFilename, describePages, assertSafeUrl, isPrivateAddress, UrlError, OCR_MIN_CHARS } from "./extract.js";
 export type { Extracted } from "./extract.js";
-export { chunkText, pageMarker, unitMarker, DEFAULT_TARGET, DEFAULT_OVERLAP } from "./chunk.js";
+export { chunkText, cjkRatio, estimateTokens, pageMarker, unitMarker, DEFAULT_TARGET, DEFAULT_OVERLAP } from "./chunk.js";
 export type { Unit } from "./chunk.js";
 export { htmlToText, decodeEntities, collapseWhitespace } from "./html.js";
 export type { HtmlText } from "./html.js";

@@ -29,6 +29,8 @@ export interface Source {
   added: string;
   /** Number of passages the chunker produces from the Markdown. The text itself is fetched separately. */
   chunks: number;
+  /** Rough token count: CJK characters count one each, everything else four characters per token. Drives cost estimates. */
+  tokens: number;
   /** SHA-256 of the original bytes; the same file dropped twice is recognised rather than duplicated. */
   hash: string;
   method: ExtractionMethod;
@@ -338,7 +340,11 @@ export interface KeyStatus {
   error?: string;
 }
 
+/** Interface and output language. "auto" follows the browser for the interface and the source for generated text. */
+export type Language = "auto" | "en" | "zh-Hans" | "zh-Hant";
+
 export interface Settings {
+  language: Language;
   graphThreshold: number;
   sessionSize: number;
   /** Learner's own background, used for bridges in course generation and grading. */

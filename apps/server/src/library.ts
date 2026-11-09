@@ -17,7 +17,7 @@ import path from "node:path";
 import type { ExtractionMethod, Source, SourceChunk, SourceKind } from "@mastery/shared";
 import { DATA_DIR } from "./config.js";
 import { nowIso } from "./ids.js";
-import { chunkText } from "./ingest/index.js";
+import { chunkText, estimateTokens } from "./ingest/index.js";
 
 const LIB = path.join(DATA_DIR, "library");
 const RAW = path.join(LIB, "raw");
@@ -43,7 +43,7 @@ function safe(id: string): string {
 
 // ---------------------------------------------------------------- frontmatter
 
-type Meta = Omit<Source, "chars" | "chunks">;
+type Meta = Omit<Source, "chars" | "chunks" | "tokens">;
 
 function serialize(meta: Meta, markdown: string): string {
   const lines = ["---"];
@@ -86,7 +86,7 @@ function chunksFor(id: string, markdown: string): SourceChunk[] {
 }
 
 function toSource(meta: Meta, markdown: string): Source {
-  return { ...meta, chars: markdown.length, chunks: chunksFor(meta.id, markdown).length };
+  return { ...meta, chars: markdown.length, tokens: estimateTokens(markdown), chunks: chunksFor(meta.id, markdown).length };
 }
 
 // ---------------------------------------------------------------- reads

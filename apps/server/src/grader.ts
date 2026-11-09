@@ -5,6 +5,7 @@
 import type { Grade, Item, Quote, RubricScore } from "@mastery/shared";
 import { route } from "./config.js";
 import { callStructured, type CallUsage } from "./llm.js";
+import { translator, type Translate } from "./i18n.js";
 
 export const GRADE_SCHEMA = {
   type: "object",
@@ -55,27 +56,27 @@ interface RawGrade {
 
 export interface GradeResult { grade: Grade; usage: CallUsage | null }
 
-function gradeMcq(item: Item, response: string): GradeResult {
+function gradeMcq(item: Item, response: string, t: Translate): GradeResult {
   const picked = Number.parseInt(response, 10);
   const correct = item.answerIndex ?? -1;
   const choices = item.choices ?? [];
   const right = picked === correct;
   let feedback: string;
-  if (right) feedback = "Correct.";
-  else if (picked >= 0 && picked < choices.length) feedback = `Incorrect. You chose: ${choices[picked]}\n\nThe answer is: ${choices[correct]}\n\n${item.answerKey ?? ""}`.trim();
-  else feedback = `No answer recorded.\n\nThe answer is: ${choices[correct] ?? "?"}`;
+  if (right) feedback = t("Correct.");
+  else if (picked >= 0 && picked < choices.length) feedback = t("Incorrect. You chose: {picked}\n\nThe answer is: {answer}\n\n{key}", { picked: choices[picked]!, answer: choices[correct]!, key: item.answerKey ?? "" }).trim();
+  else feedback = t("No answer recorded.\n\nThe answer is: {answer}", { answer: choices[correct] ?? "?" });
   return {
     grade: { score: right ? 100 : 0, rubricScores: [], feedback, probe: null, missedConcepts: right ? [] : [topicLabel(item)], quotes: [], gradedBy: "local" },
     usage: null,
   };
 }
 
-function gradeBlank(item: Item): GradeResult {
+function gradeBlank(item: Item, t: Translate): GradeResult {
   return {
     grade: {
       score: 0,
       rubricScores: [],
-      feedback: "No answer given. Skipped items are recorded as zero. That is data, not a judgement.",
+      feedback: t("No answer given. Skipped items are recorded as zero. That is data, not a judgement."),
       probe: null,
       missedConcepts: [topicLabel(item)],
       quotes: [],
@@ -89,7 +90,7 @@ function topicLabel(item: Item): string {
   return item.prompt.slice(0, 60);
 }
 
-async function gradeRemote(item: Item, response: string, topic: string, course: string, grounding: string): Promise<GradeResult> {
+async function gradeRemote(item: Item, response: string, topic: string, course: string, grounding: string, languageNote: string): Promise<GradeResult> {
   const kind = item.type === "essay" || item.type === "experiment" ? item.type : "recall";
   const payload = {
     course,
@@ -104,7 +105,7 @@ async function gradeRemote(item: Item, response: string, topic: string, course: 
     response,
   };
   const user = `Grade the following response.\n\n\`\`\`json\n${JSON.stringify(payload, null, 2)}\n\`\`\``;
-  const { result, usage } = await callStructured<RawGrade>({ kind, user, schema: GRADE_SCHEMA as unknown as Record<string, unknown> });
+  const { result, usage } = await callStructured<RawGrade>({ kind, user, schema: GRADE_SCHEMA as unknown as Record<string, unknown>, languageNote });
   return {
     grade: {
       score: Math.max(0, Math.min(100, Math.round(result.score))),
@@ -131,12 +132,14 @@ export interface ToGrade { item: Item; response: string; topic: string; course: 
  * the cache, then fan the rest out in parallel to read it. A failure on one item is captured in
  * place rather than losing the session.
  */
-export async function gradeSession(rows: ToGrade[], workers = 4): Promise<GradeResult[]> {
+export async function gradeSession(rows: ToGrade[], workers = 4, opts: { t?: Translate; languageNote?: string } = {}): Promise<GradeResult[]> {
+  const t = opts.t ?? translator("en");
+  const languageNote = opts.languageNote ?? "";
   const results: (GradeResult | null)[] = rows.map(() => null);
   const groups = new Map<string, number[]>();
   rows.forEach((row, idx) => {
-    if (row.item.type === "mcq") results[idx] = gradeMcq(row.item, row.response);
-    else if (!row.response.trim()) results[idx] = gradeBlank(row.item);
+    if (row.item.type === "mcq") results[idx] = gradeMcq(row.item, row.response, t);
+    else if (!row.response.trim()) results[idx] = gradeBlank(row.item, t);
     else {
       const kind = row.item.type === "recall" ? "recall" : row.item.type;
       const key = `${route(kind).model}|${kind}`;
@@ -147,11 +150,11 @@ export async function gradeSession(rows: ToGrade[], workers = 4): Promise<GradeR
   const safe = async (idx: number): Promise<GradeResult> => {
     const r = rows[idx]!;
     try {
-      return await gradeRemote(r.item, r.response, r.topic, r.course, r.grounding);
+      return await gradeRemote(r.item, r.response, r.topic, r.course, r.grounding, languageNote);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
+      const msg = t(err instanceof Error ? err.message : String(err));
       return {
-        grade: { score: null, rubricScores: [], feedback: `Grading failed for this item: ${msg}`, probe: null, missedConcepts: [], quotes: [], gradedBy: "error", error: msg },
+        grade: { score: null, rubricScores: [], feedback: t("Grading failed for this item: {error}", { error: msg }), probe: null, missedConcepts: [], quotes: [], gradedBy: "error", error: msg },
         usage: null,
       };
     }
@@ -210,12 +213,13 @@ export function calibrationNumbers(rows: CalibrationInput[]): { bias: number | n
   return { bias, resolution };
 }
 
-export async function calibrationReview(rows: CalibrationInput[], history: unknown[], numbers: { bias: number | null; resolution: number | null }) {
+export async function calibrationReview(rows: CalibrationInput[], history: unknown[], numbers: { bias: number | null; resolution: number | null }, languageNote = "") {
   const user = `Produce the calibration review for this session.\n\n\`\`\`json\n${JSON.stringify({ computed: numbers, session: rows, history }, null, 2)}\n\`\`\``;
   return callStructured<{ foresight_items: string[]; report: string; recommendations: string[] }>({
     kind: "calibration",
     user,
     schema: CALIBRATION_SCHEMA as unknown as Record<string, unknown>,
     maxTokens: 8000,
+    languageNote,
   });
 }

@@ -121,6 +121,7 @@ export function calibrationHistory(): CalibrationPoint[] {
 export function loadSettings(): Settings {
   const saved = readJson<Partial<Settings>>(SETTINGS) ?? {};
   return {
+    language: saved.language ?? "auto",
     graphThreshold: saved.graphThreshold ?? GRAPH_THRESHOLD_DEFAULT,
     sessionSize: saved.sessionSize ?? 8,
     background: saved.background ?? "",
@@ -133,6 +134,7 @@ export function saveSettings(patch: Partial<Settings>): Settings {
   const next: Settings = {
     ...current,
     ...patch,
+    language: (["auto", "en", "zh-Hans", "zh-Hant"] as const).includes(patch.language as never) ? patch.language! : current.language,
     graphThreshold: clamp(patch.graphThreshold ?? current.graphThreshold, 50, 95),
     sessionSize: clamp(patch.sessionSize ?? current.sessionSize, 3, 25),
     background: String(patch.background ?? current.background).slice(0, 2000),

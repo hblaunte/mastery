@@ -81,7 +81,7 @@ function defaultDigest(params: Record<string, unknown>) {
 function makeSource(id: string, title: string, chunkTexts: string[]): { source: Source; chunks: SourceChunk[] } {
   const chunks = chunkTexts.map((text, index) => ({ index, locator: `pp. ${index * 3 + 1}–${index * 3 + 3}`, text }));
   return {
-    source: { id, title, kind: "pdf", origin: `${title}.pdf`, bytes: 1, chars: chunkTexts.join("").length, pages: 9, added: "2026-01-01", chunks: chunks.length, hash: `hash-${id}`, method: "text" },
+    source: { id, title, kind: "pdf", origin: `${title}.pdf`, bytes: 1, chars: chunkTexts.join("").length, pages: 9, added: "2026-01-01", chunks: chunks.length, hash: `hash-${id}`, method: "text", tokens: 100 },
     chunks,
   };
 }

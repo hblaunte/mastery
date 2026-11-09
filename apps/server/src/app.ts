@@ -123,7 +123,7 @@ app.post("/api/library/:id/ocr", (c) => {
   if (source.kind !== "pdf") return c.json({ error: "Only PDFs can be transcribed." }, 400);
   if (!source.needsOcr?.length) return c.json({ error: "Every page of this PDF already has text." }, 400);
   if (keyStatus().mode === "none" && !process.env.ANTHROPIC_API_KEY && !process.env.ANTHROPIC_AUTH_TOKEN) return c.json({ error: "Add an API key in Settings before transcribing." }, 400);
-  return c.json(jobs.startOcr(id));
+  return c.json(jobs.startOcr(id, c.req.header("x-mastery-lang") ?? c.req.header("accept-language")));
 });
 app.delete("/api/library/:id", (c) => (library.deleteSource(c.req.param("id")) ? c.json({ ok: true }) : c.json({ error: "Unknown source." }, 404)));
 
@@ -144,7 +144,7 @@ app.post("/api/courses/build", async (c) => {
     if (!process.env.ANTHROPIC_API_KEY && !process.env.ANTHROPIC_AUTH_TOKEN) return c.json({ error: "Add an API key in Settings before building a course." }, 400);
   }
   req.background ||= store.loadSettings().background || undefined;
-  return c.json(jobs.startBuild(req));
+  return c.json(jobs.startBuild(req, c.req.header("x-mastery-lang") ?? c.req.header("accept-language")));
 });
 app.get("/api/jobs/:id", (c) => {
   const job = jobs.getJob(c.req.param("id"));
@@ -172,8 +172,8 @@ app.get("/api/jobs/:id/events", (c) => {
 });
 
 // ---- sessions
-app.post("/api/session/new", async (c) => c.json(newSession((await c.req.json().catch(() => ({}))) as { courseIds?: string[]; size?: number })));
-app.post("/api/session/submit", async (c) => c.json(await submitSession((await c.req.json()) as SubmitRequest)));
+app.post("/api/session/new", async (c) => c.json(newSession((await c.req.json().catch(() => ({}))) as { courseIds?: string[]; size?: number }, c.req.header("x-mastery-lang") ?? c.req.header("accept-language"))));
+app.post("/api/session/submit", async (c) => c.json(await submitSession((await c.req.json()) as SubmitRequest, c.req.header("x-mastery-lang") ?? c.req.header("accept-language"))));
 app.get("/api/history", (c) => c.json(store.listSessions(Number(c.req.query("limit") ?? 50))));
 
 // ---- graph

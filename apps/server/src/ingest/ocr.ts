@@ -47,6 +47,7 @@ Rules:
 - Where a word or passage cannot be read, write [illegible] rather than guessing.
 - Reproduce footnotes, captions, marginal notes and running headers only if they carry content; drop page numbers printed on the page and decorative elements.
 - If a page is blank or holds only an image with no text, write the page marker followed by a line saying [no text on this page].
+- Transcribe in the language of the page. Never translate. For Chinese, Japanese and Korean keep full-width punctuation (，。「」《》) as printed; for vertical text, output it in reading order as ordinary horizontal lines.
 - Output only the transcription. Do not wrap it in a code fence.`;
 
 const MARKER_LINE = /^[ \t]*\[\[page (\d+)\]\][ \t]*$/;
