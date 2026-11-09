@@ -1,4 +1,5 @@
 import { Fragment, type ReactNode } from "react";
+import { useT } from "../i18n";
 
 /**
  * Enough Markdown for extracted sources: headings, paragraphs, lists, quotes, fenced code,
@@ -7,6 +8,7 @@ import { Fragment, type ReactNode } from "react";
  * Everything is built as React nodes, so no raw HTML from a document is ever injected.
  */
 export function Markdown({ text }: { text: string }) {
+  const { t } = useT();
   const lines = text.split("\n");
   const out: ReactNode[] = [];
   let i = 0, key = 0;
@@ -35,7 +37,7 @@ export function Markdown({ text }: { text: string }) {
   while (i < lines.length) {
     const raw = lines[i]!;
     const unit = /^\s*\[\[(page|slide|section)\s+(\d+)\]\]\s*$/.exec(raw);
-    if (unit) { out.push(<span key={k()} className="unit">{unit[1]} {unit[2]}</span>); i++; continue; }
+    if (unit) { out.push(<span key={k()} className="unit">{unit[1] === "page" ? t("page {n}", { n: unit[2]! }) : unit[1] === "slide" ? t("slide {n}", { n: unit[2]! }) : t("section {n}", { n: unit[2]! })}</span>); i++; continue; }
     if (/^\s*```/.test(raw)) {
       const buf: string[] = []; i++;
       while (i < lines.length && !/^\s*```/.test(lines[i]!)) buf.push(lines[i++]!);

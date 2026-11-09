@@ -7,17 +7,20 @@
 import { useCallback, useMemo, useRef, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from "react";
 import type { GraphData, ItemType, NodeState } from "@mastery/shared";
 import { Icon } from "@mastery/ui/glass";
+import { formatCount } from "@mastery/ui";
 import { DraggablePip } from "./DraggablePip";
 import type { SimNode } from "./nodes";
+import { k, useT, type T } from "../i18n";
 
 // ── Text helpers ──────────────────────────────────────────────────────────────
 export function escapeHtml(s: string): string {
   return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 }
 
-const STATE_LABEL: Record<NodeState, string> = { emerging: "Emerging", lit: "Lit", mastered: "Mastered" };
-export function stateLabel(state: NodeState): string {
-  return STATE_LABEL[state] ?? state;
+const STATE_LABEL: Record<NodeState, string> = { emerging: k("Emerging"), lit: k("Lit"), mastered: k("Mastered") };
+export function stateLabel(state: NodeState, t: T): string {
+  const key = STATE_LABEL[state];
+  return key ? t(key) : state;
 }
 
 export function percent(mastery: number): string {
@@ -25,24 +28,20 @@ export function percent(mastery: number): string {
 }
 
 const ITEM_TYPE_LABEL: Record<ItemType, string> = {
-  mcq: "Multiple choice",
-  recall: "Recall",
-  essay: "Essay",
-  experiment: "Experiment",
+  mcq: k("Multiple choice"),
+  recall: k("Recall"),
+  essay: k("Essay"),
+  experiment: k("Experiment"),
 };
 
-function litDate(iso: string): string | null {
+function litDate(iso: string, locale: string): string | null {
   const t = Date.parse(iso);
   if (Number.isNaN(t)) return null;
   try {
-    return new Date(t).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+    return new Date(t).toLocaleDateString(locale, { day: "numeric", month: "short", year: "numeric" });
   } catch {
     return null;
   }
-}
-
-function plural(n: number, one: string, other: string): string {
-  return `${n.toLocaleString()} ${n === 1 ? one : other}`;
 }
 
 // ── Node detail panel ─────────────────────────────────────────────────────────
@@ -97,8 +96,10 @@ export function NodeDetailPanel({
     }
   };
 
-  const lit = node.litAt ? litDate(node.litAt) : null;
-  const typeLabel = node.itemType ? ITEM_TYPE_LABEL[node.itemType] ?? node.itemType : null;
+  const { t, tx, locale } = useT();
+  const lit = node.litAt ? litDate(node.litAt, locale) : null;
+  const typeKey = node.itemType ? ITEM_TYPE_LABEL[node.itemType] : null;
+  const typeLabel = node.itemType ? (typeKey ? t(typeKey) : node.itemType) : null;
   const showContent = node.content.trim() !== "" && node.content.trim() !== node.label.trim();
 
   return (
@@ -117,7 +118,7 @@ export function NodeDetailPanel({
             <span aria-hidden="true" className="kg-dot" style={{ background: color, boxShadow: `0 0 10px ${color}` }} />
             {node.domainTitle}
           </span>
-          <button type="button" onClick={onClose} aria-label="Close" className="kg-icon-btn">
+          <button type="button" onClick={onClose} aria-label={t("Close")} className="kg-icon-btn">
             <Icon name="close" small />
           </button>
         </header>
@@ -125,13 +126,13 @@ export function NodeDetailPanel({
         <h2 className="kg-note-title">{node.label}</h2>
 
         <p className="kg-note-meta">
-          <span className={`kg-state ${node.state}`}>{stateLabel(node.state)}</span>
+          <span className={`kg-state ${node.state}`}>{stateLabel(node.state, t)}</span>
           <span className="kg-sep" aria-hidden="true">·</span>
-          <span className="kg-num">{percent(node.mastery)}</span> mastery
+          {tx("{pct} mastery", { pct: <span className="kg-num">{percent(node.mastery)}</span> })}
           {lit && (
             <>
               <span className="kg-sep" aria-hidden="true">·</span>
-              lit <time dateTime={node.litAt}>{lit}</time>
+              {tx("lit {date}", { date: <time dateTime={node.litAt}>{lit}</time> })}
             </>
           )}
           {typeLabel && (
@@ -145,7 +146,7 @@ export function NodeDetailPanel({
         {showContent && <p className="kg-note-content">{node.content}</p>}
 
         {node.tags.length > 0 && (
-          <ul aria-label="Tags" className="chips kg-tags">
+          <ul aria-label={t("Tags")} className="chips kg-tags">
             {node.tags.map((tag) => (
               <li key={tag} className="chip">{tag}</li>
             ))}
@@ -156,7 +157,7 @@ export function NodeDetailPanel({
           <div className="kg-note-actions">
             <button type="button" className="cta auto" onClick={() => onStudy(node)}>
               <Icon name="study" small />
-              Study this
+              {t("Study this")}
             </button>
           </div>
         )}
@@ -175,6 +176,7 @@ export function Legend({
   colorFor: (domainId: string) => string;
   bounds: { width: number; height: number };
 }) {
+  const { t, locale } = useT();
   const courses = useMemo(() => {
     const m = new Map<string, { title: string; count: number }>();
     for (const n of data.nodes) {
@@ -188,9 +190,9 @@ export function Legend({
   }, [data.nodes]);
 
   return (
-    <DraggablePip anchor="left" bounds={bounds} defaultEdge={24} defaultTop={300} panelWidth={220} tabLabel="Courses" tabY={300} zIndex={10}>
+    <DraggablePip anchor="left" bounds={bounds} defaultEdge={24} defaultTop={300} panelWidth={220} tabLabel={t("Courses")} tabY={300} zIndex={10}>
       <section aria-labelledby="kg-legend-title" className="glass kg-panel kg-legend">
-        <h2 id="kg-legend-title" className="overline kg-overline">Courses</h2>
+        <h2 id="kg-legend-title" className="overline kg-overline">{t("Courses")}</h2>
 
         <ul className="kg-legend-list">
           {courses.map((c) => {
@@ -206,9 +208,9 @@ export function Legend({
         </ul>
 
         <p className="kg-legend-foot kg-num">
-          {plural(data.nodes.length, "node", "nodes")} · {plural(data.links.length, "link", "links")} · {data.pending.toLocaleString()} not yet lit
+          {formatCount(data.nodes.length, { one: t("{n} node"), other: t("{n} nodes") }, locale)} · {formatCount(data.links.length, { one: t("{n} link"), other: t("{n} links") }, locale)} · {t("{n} not yet lit", { n: data.pending.toLocaleString(locale) })}
         </p>
-        <p className="hint kg-num">Nodes light at {data.threshold}</p>
+        <p className="hint kg-num">{t("Nodes light at {n}", { n: data.threshold })}</p>
       </section>
     </DraggablePip>
   );
@@ -217,11 +219,12 @@ export function Legend({
 // ── Beam destination label ────────────────────────────────────────────────────
 // Follows the pointer while it rests on a lit beam of the selected node.
 export function BeamLabel({ x, y, node, color }: { x: number; y: number; node: SimNode; color: string }) {
+  const { t } = useT();
   return (
     <div aria-hidden className="kg-tip kg-beam-tip" style={{ left: x + 14, top: y + 14 }}>
-      <span className="kg-tip-go">Go to </span>
+      <span className="kg-tip-go">{t("Go to")} </span>
       <span className="kg-tip-course" style={{ color }}>{node.domainTitle}</span>
-      <span className="kg-tip-meta">{stateLabel(node.state)} · {percent(node.mastery)}</span>
+      <span className="kg-tip-meta">{stateLabel(node.state, t)} · {percent(node.mastery)}</span>
       <div className="kg-tip-label">{node.label}</div>
     </div>
   );
@@ -229,17 +232,18 @@ export function BeamLabel({ x, y, node, color }: { x: number; y: number; node: S
 
 // ── Empty state ───────────────────────────────────────────────────────────────
 export function EmptyState({ threshold, pending }: { threshold: number; pending: number }) {
+  const { t, locale } = useT();
   const below =
     pending === 0
-      ? "No answered items are below it yet."
+      ? t("No answered items are below it yet.")
       : pending === 1
-        ? "1 answered item is below it."
-        : `${pending.toLocaleString()} answered items are below it.`;
+        ? t("1 answered item is below it.")
+        : t("{n} answered items are below it.", { n: pending.toLocaleString(locale) });
   return (
     <div className="kg-empty" role="status">
-      <p className="kg-empty-title">Nothing lit yet.</p>
+      <p className="kg-empty-title">{t("Nothing lit yet.")}</p>
       <p className="kg-empty-body kg-num">
-        An item joins the graph once its latest score reaches {threshold}. {below}
+        {t("An item joins the graph once its latest score reaches {threshold}. {below}", { threshold, below })}
       </p>
     </div>
   );

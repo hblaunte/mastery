@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { AppState, SessionRecord } from "@mastery/shared";
 import { Icon, Sheet, TabBar, Toast, heroStyle, useSheet, useTheme, useToast, type GlassTab } from "@mastery/ui/glass";
 import { api } from "./api";
+import { LangProvider, k, resolveLang, translate } from "./i18n";
 import { Onboarding } from "./onboarding";
 import { Home } from "./screens/Home";
 import { Study } from "./screens/Study";
@@ -17,11 +18,11 @@ import { CourseSheet } from "./sheets/Course";
 
 export type TabId = "home" | "study" | "library" | "graph" | "progress";
 export const TABS: GlassTab<TabId>[] = [
-  { id: "home", label: "Home", icon: "home" },
-  { id: "study", label: "Study", icon: "study", tour: "tab-study" },
-  { id: "library", label: "Library", icon: "book", tour: "tab-library" },
-  { id: "graph", label: "Graph", icon: "graph", tour: "tab-graph" },
-  { id: "progress", label: "Progress", icon: "chart", tour: "tab-progress" },
+  { id: "home", label: k("Home"), icon: "home" },
+  { id: "study", label: k("Study"), icon: "study", tour: "tab-study" },
+  { id: "library", label: k("Library"), icon: "book", tour: "tab-library" },
+  { id: "graph", label: k("Graph"), icon: "graph", tour: "tab-graph" },
+  { id: "progress", label: k("Progress"), icon: "chart", tour: "tab-progress" },
 ];
 
 export type SheetKind =
@@ -44,6 +45,12 @@ export default function App() {
   const [theme, setTheme] = useTheme();
   const [tour, setTour] = useState(false);
   const dirty = useRef(false); // a session with answers in it
+
+  // The language setting drives the provider below; App itself sits above it, so it resolves the same language once here.
+  const langSetting = state?.settings.language ?? "auto";
+  const lang = resolveLang(langSetting);
+  const t = useMemo(() => (key: string, vars?: Record<string, string | number>) => translate(lang, key, vars), [lang]);
+  const tabs = useMemo(() => TABS.map((tb) => ({ ...tb, label: t(tb.label) })), [t]);
 
   const reload = useCallback(async () => {
     try {
@@ -72,17 +79,17 @@ export default function App() {
     frame.current = requestAnimationFrame(() => setScrollY(Math.round(Math.min(y, 400))));
   }
   const requestClose = useCallback(() => {
-    if (sheet?.kind === "session" && dirty.current && !window.confirm("Leave this session? Your answers so far will be lost.")) return;
+    if (sheet?.kind === "session" && dirty.current && !window.confirm(t("Leave this session? Your answers so far will be lost."))) return;
     dirty.current = false;
     close();
-  }, [sheet, close]);
+  }, [sheet, close, t]);
 
   function onGraded(record: SessionRecord) {
     dirty.current = false;
     open({ kind: "results", record });
     void reload();
     const lit = record.responses.filter((r) => r.graph.newlyLit).length;
-    show(lit ? `Graded. ${lit === 1 ? "One new node lit" : `${lit} new nodes lit`} on your graph.` : "Graded. Intervals updated.");
+    show(lit ? (lit === 1 ? t("Graded. One new node lit on your graph.") : t("Graded. {n} new nodes lit on your graph.", { n: lit })) : t("Graded. Intervals updated."));
   }
   async function finishTour(completed: boolean) {
     setTour(false);
@@ -90,16 +97,17 @@ export default function App() {
       await api.settings({ onboardingDone: true });
       await reload();
     } catch { /* the tour simply shows again next time */ }
-    if (completed) show("You know how it works. Add your key or drop a source to begin.");
+    if (completed) show(t("You know how it works. Add your key or drop a source to begin."));
   }
 
   const hero = heroStyle(scrollY);
-  const tabLabel = TABS.find((t) => t.id === tab)?.label ?? "Home";
+  const tabLabel = tabs.find((tb) => tb.id === tab)?.label ?? t("Home");
   const beginSession = (courseIds?: string[], size?: number) => open({ kind: "session", courseIds, size });
 
   return (
+    <LangProvider setting={langSetting}>
     <div className="shell" data-tab={tab}>
-      {TABS.map((t) => <div key={t.id} className={`wash ${t.id}${tab === t.id ? " on" : ""}`} aria-hidden="true" />)}
+      {TABS.map((tb) => <div key={tb.id} className={`wash ${tb.id}${tab === tb.id ? " on" : ""}`} aria-hidden="true" />)}
 
       <div className={`stage${sheet && !closing ? " receded" : ""}`} inert={sheet ? true : undefined}>
         <header className={`topbar${scrollY > 8 ? " glass-on" : ""}`}>
@@ -107,15 +115,15 @@ export default function App() {
           <span className="grow" />
           {state && (
             <span className={`link-pill ${state.key.mode === "none" ? "warn" : state.key.valid === false ? "warn" : "ok"}`}>
-              {state.key.mode === "none" ? "No API key" : state.key.valid === false ? "Key rejected" : state.key.mode === "managed" ? "Managed key" : `Your key …${state.key.last4 ?? ""}`}
+              {state.key.mode === "none" ? t("No API key") : state.key.valid === false ? t("Key rejected") : state.key.mode === "managed" ? t("Managed key") : t("Your key …{last4}", { last4: state.key.last4 ?? "" })}
             </span>
           )}
-          <button type="button" className="ibtn ctrl" aria-label="How it works" onClick={() => setTour(true)}><Icon name="info" small /></button>
-          <button type="button" className="ibtn ctrl" aria-label="Settings and API key" data-tour="key" onClick={() => open({ kind: "settings" })}><Icon name="key" small /></button>
+          <button type="button" className="ibtn ctrl" aria-label={t("How it works")} onClick={() => setTour(true)}><Icon name="info" small /></button>
+          <button type="button" className="ibtn ctrl" aria-label={t("Settings and API key")} data-tour="key" onClick={() => open({ kind: "settings" })}><Icon name="key" small /></button>
         </header>
 
         <main ref={scrollRef} className={`scroll${tab === "graph" ? " nopad" : ""}`} aria-label={tabLabel} onScroll={onScroll}>
-          {error && <div className="narrow enter"><p className="form-error" role="alert"><strong>Could not reach the server.</strong> {error}</p></div>}
+          {error && <div className="narrow enter"><p className="form-error" role="alert"><strong>{t("Could not reach the server.")}</strong> {error}</p></div>}
           {tab === "home" && <Home state={state} heroStyle={hero} onBegin={() => beginSession()} onGo={go} onBuild={(ids) => open({ kind: "build", sourceIds: ids })} onCourse={(id) => open({ kind: "course", id })} onSession={(r) => open({ kind: "results", record: r })} />}
           {tab === "study" && <Study state={state} heroStyle={hero} onBegin={beginSession} onCourse={(id) => open({ kind: "course", id })} onGo={go} />}
           {tab === "library" && <Library state={state} heroStyle={hero} reload={reload} notify={show} onRead={(sourceId, chunk) => open({ kind: "reader", sourceId, chunk })} onBuild={(ids) => open({ kind: "build", sourceIds: ids })} />}
@@ -123,7 +131,7 @@ export default function App() {
           {tab === "progress" && <Progress state={state} heroStyle={hero} onSession={(r) => open({ kind: "results", record: r })} onCourse={(id) => open({ kind: "course", id })} />}
         </main>
 
-        <TabBar tabs={TABS} current={tab} onChange={go} compact={scrollY > 120} />
+        <TabBar tabs={tabs} current={tab} onChange={go} compact={scrollY > 120} />
       </div>
 
       {sheet && <div className={`scrim${closing ? " out" : ""}`} aria-hidden="true" onClick={requestClose} />}
@@ -163,12 +171,13 @@ export default function App() {
         onClose={(completed) => void finishTour(completed)}
         state={state}
         go={go}
-        openSheet={(k) => {
-          if (k === "settings") open({ kind: "settings" });
-          else if (k === "build") open({ kind: "build", sourceIds: state?.sources.map((s) => s.id) ?? [] });
+        openSheet={(kind) => {
+          if (kind === "settings") open({ kind: "settings" });
+          else if (kind === "build") open({ kind: "build", sourceIds: state?.sources.map((s) => s.id) ?? [] });
           else { go("library"); setTimeout(() => document.querySelector<HTMLElement>("[data-tour='drop'] input")?.click(), 400); }
         }}
       />
     </div>
+    </LangProvider>
   );
 }

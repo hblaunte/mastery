@@ -2,18 +2,22 @@ import type {
   AppState, BuildCourseRequest, Course, CourseSummary, GraphData, Job, JobEvent, KeyStatus, PublicItem, SessionRecord,
   SessionStart, Settings, Source, SourceChunk, SubmitRequest,
 } from "@mastery/shared";
+import { activeLang, tr } from "./i18n";
 
 export class ApiError extends Error {
   constructor(message: string, public status: number) { super(message); }
 }
 
 async function call<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(path, init);
+  // The server writes its own messages (build progress, local verdicts, errors) in the interface language.
+  const headers = new Headers(init?.headers);
+  headers.set("x-mastery-lang", activeLang());
+  const res = await fetch(path, { ...init, headers });
   const text = await res.text();
   let data: unknown = null;
   try { data = text ? JSON.parse(text) : null; } catch { /* non-JSON error body */ }
   if (!res.ok) {
-    const msg = (data as { error?: string } | null)?.error ?? `Request failed (${res.status})`;
+    const msg = (data as { error?: string } | null)?.error ?? tr("Request failed ({status})", { status: res.status });
     throw new ApiError(msg, res.status);
   }
   return data as T;

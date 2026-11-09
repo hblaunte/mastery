@@ -11,6 +11,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useT } from "../i18n";
 
 type DockSide = "left" | "right";
 
@@ -45,6 +46,7 @@ export function DraggablePip({
   zIndex = 20,
   children,
 }: DraggablePipProps) {
+  const { t } = useT();
   // Start docked to anchor side
   const [docked, setDocked] = useState<DockSide | null>(anchor);
   const [liveTabY, setLiveTabY] = useState(tabY);
@@ -168,7 +170,7 @@ export function DraggablePip({
         ref={tabRef}
         type="button"
         onClick={undock}
-        aria-label={`Show ${tabLabel}`}
+        aria-label={t("Show {label}", { label: tabLabel })}
         className={`kg-pip-tab ${docked}`}
         style={{ top: Math.min(liveTabY, Math.max(MIN_TAB_Y, bounds.height - 120)), zIndex, width: TAB_W }}
       >
@@ -190,7 +192,7 @@ export function DraggablePip({
         style={{ height: HANDLE_H }}
         onMouseDown={(e) => { e.preventDefault(); startDrag(e.clientX, e.clientY); }}
         onTouchStart={(e) => { const t = e.touches[0]; if (t) startDrag(t.clientX, t.clientY); }}
-        title="Drag to move or dock"
+        title={t("Drag to move or dock")}
       >
         <div className="kg-pip-grip" />
         <button
@@ -198,8 +200,8 @@ export function DraggablePip({
           onClick={dock}
           onMouseDown={(e) => e.stopPropagation()}
           onTouchStart={(e) => e.stopPropagation()}
-          aria-label={`Hide ${tabLabel}`}
-          title={`Hide ${tabLabel.toLowerCase()}`}
+          aria-label={t("Hide {label}", { label: tabLabel })}
+          title={t("Hide {label}", { label: tabLabel.toLowerCase() })}
           className="kg-icon-btn kg-pip-hide"
         >
           <svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" focusable="false">

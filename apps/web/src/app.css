@@ -148,3 +148,31 @@
 .md table { border-collapse: collapse; font-size: 13.5px; } .md td, .md th { border: 1px solid var(--card-line); padding: 6px 10px; text-align: start; }
 .md hr { border: 0; border-block-start: 1px solid var(--card-line); }
 .md .unit { display: block; margin-block: 14px 4px; font-size: 11.5px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--fg3); }
+
+/* ---- CJK typography (Simplified and Traditional Chinese) ----
+   Scoped to the document language, which the LangProvider sets on <html>. Chinese has no italics
+   and no word spaces, so line-height and wrapping rules differ from the Latin defaults in glass.css. */
+:root[lang^="zh-Hans"] { --font-body: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif; }
+:root[lang^="zh-Hant"] { --font-body: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, "Segoe UI", "PingFang TC", "Hiragino Sans CNS", "Microsoft JhengHei", "Noto Sans CJK TC", sans-serif; }
+:root[lang^="zh"] body { line-height: 1.65; word-break: normal; overflow-wrap: anywhere; text-wrap: pretty; }
+:root[lang^="zh"] em, :root[lang^="zh"] .raw, :root[lang^="zh"] i:not([class]) { font-style: normal; }
+:root[lang^="zh"] em { font-weight: 600; }
+/* No tracking on Chinese headings and labels; keep the negative tracking only where it was tuned for numerals. */
+:root[lang^="zh"] .brand, :root[lang^="zh"] .sheet-title, :root[lang^="zh"] .f-title, :root[lang^="zh"] .profile h2,
+:root[lang^="zh"] .section-h h2, :root[lang^="zh"] .section-h h3, :root[lang^="zh"] .ob-title, :root[lang^="zh"] .kg-note-title,
+:root[lang^="zh"] .kg-empty-title, :root[lang^="zh"] .md h1, :root[lang^="zh"] .md h2, :root[lang^="zh"] .md h3, :root[lang^="zh"] .md h4,
+:root[lang^="zh"] .big, :root[lang^="zh"] .big .unit, :root[lang^="zh"] .ob-stat-l, :root[lang^="zh"] .kind, :root[lang^="zh"] .verdict,
+:root[lang^="zh"] .ob-v, :root[lang^="zh"] .md .unit { letter-spacing: 0; }
+:root[lang^="zh"] .big .num { letter-spacing: -.035em; }
+:root[lang^="zh"] .kind, :root[lang^="zh"] .verdict, :root[lang^="zh"] .ob-v, :root[lang^="zh"] .md .unit, :root[lang^="zh"] .kg-overline { text-transform: none; }
+:root[lang^="zh"] .kg-pip-tab-label { letter-spacing: .08em; }
+/* Tab bar labels stay on one line at 11px inside the 78px tab. */
+:root[lang^="zh"] .tab .lbl { white-space: nowrap; }
+/* Picker caption and the verdict column take 2 to 5 characters at their current sizes. */
+:root[lang^="zh"] .picker-caption { font-size: 13px; }
+:root[lang^="zh"] .rubric div { grid-template-columns: 72px 1fr; }
+/* Code and numerals keep their own stacks. */
+:root[lang^="zh"] code, :root[lang^="zh"] pre, :root[lang^="zh"] .code, :root[lang^="zh"] .path { font-family: var(--font-mono); }
+
+/* The language control has four options and wraps on narrow sheets rather than overflowing. */
+.seg.seg-wrap { flex-wrap: wrap; }

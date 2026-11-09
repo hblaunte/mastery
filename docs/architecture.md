@@ -42,6 +42,25 @@ prompts/        grading and generation prompts, plain Markdown, re-read on every
    locally, asks the cheap tier for the prose report, and writes `data/sessions/<stamp>.json`.
 4. **Graph**: `GET /api/graph` derives nodes and links from courses plus state on every call.
 
+## Languages
+
+The interface ships in English, Simplified Chinese and Traditional Chinese (`Settings → Language`,
+default "System", which follows the browser). Generated text follows `Settings.language` too: when
+it is "auto", every prompt carries a note telling the model to write items, feedback and reports in
+the language of the source and to answer the learner in the language they wrote in; when it is set,
+the note names that language. The note is substituted for `{{language}}` in `prompts/_system.md`,
+`build-outline.md` and `build-items.md`. Server-side strings the learner reads (build progress,
+local multiple-choice verdicts, key and model errors) come from `apps/server/src/i18n.ts`, chosen
+by the setting or, under "auto", by the client's `x-mastery-lang` header.
+
+Chinese text is handled in the chunker: sentences split at 。！？； as well as at Latin punctuation,
+the overlap tail cuts at a clause mark rather than a space, and the passage target shrinks with the
+share of CJK characters (6,000 Latin characters or about 2,400 Chinese ones, roughly the same token
+budget). `Source.tokens` estimates one token per CJK character and four Latin characters per token
+and drives the cost estimates. Quote highlighting is substring matching, so the grader's marks land
+on Chinese sentences unchanged. OCR is told to transcribe in the language of the page and keep
+full-width punctuation.
+
 ## Keys
 
 `PUT /api/keys {mode:"byok", key}` encrypts the key with AES-256-GCM under a machine-local

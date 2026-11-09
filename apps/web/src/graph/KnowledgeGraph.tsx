@@ -54,6 +54,7 @@ import {
 } from "./beams";
 import { BEAM_PICK_PX_MOUSE, BEAM_PICK_PX_TOUCH, isOnStar, pickBeam, useTapToSelect } from "./picking";
 import { BeamLabel, EmptyState, Legend, NodeDetailPanel, PANEL_MAX_W, PANEL_MIN_W, escapeHtml, percent, stateLabel } from "./GraphPanels";
+import { tr } from "../i18n";
 import "./graph.css";
 
 // ── Props ─────────────────────────────────────────────────────────────────────
@@ -96,7 +97,7 @@ function nodeLabel(node: FGNode): string {
   return (
     `<div class="kg-tip">` +
     `<span class="kg-tip-course" style="color:${escapeHtml(colorOf(n.domain))}">${escapeHtml(n.domainTitle)}</span>` +
-    `<span class="kg-tip-meta">${escapeHtml(stateLabel(n.state))} · ${percent(n.mastery)}</span>` +
+    `<span class="kg-tip-meta">${escapeHtml(stateLabel(n.state, tr))} · ${percent(n.mastery)}</span>` +
     `<div class="kg-tip-label">${escapeHtml(n.label)}</div>` +
     `</div>`
   );

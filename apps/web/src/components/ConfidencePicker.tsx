@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState } from "react";
+import { useT, type T } from "../i18n";
 
 /**
  * Detented confidence picker. A range input invites a shrug at the midpoint; a flat 75 across a
@@ -9,11 +10,12 @@ import { useEffect, useId, useRef, useState } from "react";
 const STEP = 5;
 const STOPS = Array.from({ length: 100 / STEP + 1 }, (_, i) => i * STEP);
 
-export function caption(v: number): string {
-  return v <= 15 ? "almost certainly not" : v <= 35 ? "probably not" : v <= 60 ? "genuinely unsure" : v <= 80 ? "probably" : "almost certain";
+export function caption(v: number, t: T): string {
+  return v <= 15 ? t("almost certainly not") : v <= 35 ? t("probably not") : v <= 60 ? t("genuinely unsure") : v <= 80 ? t("probably") : t("almost certain");
 }
 
 export function ConfidencePicker({ value, onChange, label }: { value: number | null; onChange: (v: number) => void; label: string }) {
+  const { t } = useT();
   const id = useId();
   const track = useRef<HTMLDivElement>(null);
   const [touched, setTouched] = useState(value !== null);
@@ -62,7 +64,7 @@ export function ConfidencePicker({ value, onChange, label }: { value: number | n
         <span>{touched ? shown : "—"}</span>
         <small>{touched ? "%" : ""}</small>
       </div>
-      <div className="picker-caption">{touched ? caption(shown) : "drag, click a stop, or use ← →"}</div>
+      <div className="picker-caption">{touched ? caption(shown, t) : t("drag, click a stop, or use ← →")}</div>
       <div
         ref={track}
         className="picker-track"
@@ -72,7 +74,7 @@ export function ConfidencePicker({ value, onChange, label }: { value: number | n
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={touched ? shown : 50}
-        aria-valuetext={touched ? `${shown} percent, ${caption(shown)}` : "not set"}
+        aria-valuetext={touched ? t("{n} percent, {caption}", { n: shown, caption: caption(shown, t) }) : t("not set")}
         onScroll={onScroll}
         onKeyDown={onKey}
       >
@@ -84,7 +86,7 @@ export function ConfidencePicker({ value, onChange, label }: { value: number | n
             data-major={v % 25 === 0 ? "" : undefined}
             aria-current={touched && v === shown ? "true" : undefined}
             tabIndex={-1}
-            aria-label={`${v} percent`}
+            aria-label={t("{n} percent", { n: v })}
             onClick={() => { ready.current = true; goTo(v); commit(v); }}
           >
             <i /><b>{v}</b>

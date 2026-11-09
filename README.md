@@ -31,6 +31,12 @@ begin a session. The tour walks through it the first time.
 
 For a single-origin build: `pnpm build && pnpm start`, then http://127.0.0.1:8787.
 
+## Languages
+
+English, Simplified Chinese and Traditional Chinese, for both the interface and what the model
+writes. Drop in Chinese sources and the course, the feedback and the calibration report come back in
+Chinese; set the language in Settings to fix it regardless of the source.
+
 ## Your key, or ours
 
 Grading and course building call Claude. Bring your own key and you pay Anthropic directly;

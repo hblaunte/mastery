@@ -4,6 +4,7 @@ import { hueOf } from "@mastery/ui";
 import { api } from "../api";
 import { KnowledgeGraph } from "../graph";
 import { Spinner } from "../components/bits";
+import { useT } from "../i18n";
 
 /** Course hue → a hex colour the three.js materials can take. Light enough to glow on the void. */
 export function courseColor(id: string, title?: string): string {
@@ -18,6 +19,7 @@ function hslToHex(h: number, s: number, l: number): string {
 }
 
 export function GraphTab({ theme, state, onStudy }: { theme: "light" | "dark" | "system"; state: AppState | null; onStudy: (courseId: string) => void }) {
+  const { t } = useT();
   const [data, setData] = useState<GraphData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const wrap = useRef<HTMLDivElement>(null);
@@ -45,7 +47,7 @@ export function GraphTab({ theme, state, onStudy }: { theme: "light" | "dark" | 
   return (
     <div ref={wrap} className="graph-wrap">
       {error && <div className="narrow" style={{ paddingBlockStart: 80 }}><p className="form-error" role="alert">{error}</p></div>}
-      {!data && !error && <div style={{ display: "grid", placeItems: "center", height: "100%" }}><Spinner label="Mapping what you know…" /></div>}
+      {!data && !error && <div style={{ display: "grid", placeItems: "center", height: "100%" }}><Spinner label={t("Mapping what you know…")} /></div>}
       {data && size.w > 0 && (
         <KnowledgeGraph
           data={data}

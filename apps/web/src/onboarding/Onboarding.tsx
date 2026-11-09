@@ -5,6 +5,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProp
 import { createPortal } from "react-dom";
 import type { AppState } from "@mastery/shared";
 import { Icon } from "@mastery/ui/glass";
+import { useT } from "../i18n";
 import { Demo, ONBOARDING_STEPS, finalAction, tailoredBody, type TourSheet, type TourTab } from "./steps";
 import "./onboarding.css";
 
@@ -80,6 +81,7 @@ function placeCard(hole: Box | null, view: View, card: { w: number; h: number })
 }
 
 export function Onboarding({ open, onClose, state, go, openSheet }: OnboardingProps): JSX.Element | null {
+  const { t } = useT();
   const steps = ONBOARDING_STEPS;
   const total = steps.length;
   const [index, setIndex] = useState(0);
@@ -335,7 +337,8 @@ export function Onboarding({ open, onClose, state, go, openSheet }: OnboardingPr
 
   const titleId = "ob-title";
   const bodyId = "ob-body";
-  const body = tailoredBody(step, state);
+  const body = tailoredBody(step, state, t);
+  const title = t(step.title);
 
   return createPortal(
     <div className={`ob${closing ? " out" : ""}`} data-step={step.id}>
@@ -362,8 +365,8 @@ export function Onboarding({ open, onClose, state, go, openSheet }: OnboardingPr
         aria-describedby={bodyId}
       >
         <div className="ob-content" key={step.id}>
-          <span className="ob-over">Step {index + 1} of {total}</span>
-          <h2 id={titleId} className="ob-title">{step.title}</h2>
+          <span className="ob-over">{t("Step {i} of {n}", { i: index + 1, n: total })}</span>
+          <h2 id={titleId} className="ob-title">{title}</h2>
           <p id={bodyId} className="ob-body">{body}</p>
           {step.demo && <Demo kind={step.demo} />}
         </div>
@@ -377,41 +380,41 @@ export function Onboarding({ open, onClose, state, go, openSheet }: OnboardingPr
         <div className="ob-actions">
           {!last && (
             <button type="button" className="ob-skip" onClick={skip}>
-              Skip tour
+              {t("Skip tour")}
             </button>
           )}
           <span className="grow" />
           {index > 0 && (
             <button type="button" className="cta ghost auto small" onClick={back}>
-              Back
+              {t("Back")}
             </button>
           )}
           {last ? (
             action ? (
               <>
                 <button type="button" className="cta ghost auto small" onClick={() => finish(true)}>
-                  Finish
+                  {t("Finish")}
                 </button>
                 <button ref={primaryRef} type="button" className="cta auto small" onClick={runAction}>
-                  {action.label}
+                  {t(action.label)}
                   <Icon name="chevron" small />
                 </button>
               </>
             ) : (
               <button ref={primaryRef} type="button" className="cta auto small" onClick={() => finish(true)}>
-                Finish
+                {t("Finish")}
               </button>
             )
           ) : (
             <button ref={primaryRef} type="button" className="cta auto small" onClick={next}>
-              Next
+              {t("Next")}
               <Icon name="chevron" small />
             </button>
           )}
         </div>
 
         <span className="visually-hidden" aria-live="polite" aria-atomic="true">
-          Step {index + 1} of {total}: {step.title}
+          {t("Step {i} of {n}: {title}", { i: index + 1, n: total, title })}
         </span>
       </div>
     </div>,
