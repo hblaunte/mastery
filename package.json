@@ -5,8 +5,8 @@
   "description": "Build your own course from your own sources, then be quizzed on it until you have mastered it.",
   "type": "module",
   "scripts": {
-    "dev": "pnpm -r --parallel --filter ./apps/* dev",
-    "build": "pnpm -r --filter ./packages/* --filter @mastery/web --filter @mastery/server build",
+    "dev": "pnpm -r --parallel --filter @mastery/web --filter @mastery/server dev",
+    "build": "pnpm -r --filter @mastery/web --filter @mastery/server build",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
     "start": "pnpm --filter @mastery/server start",
