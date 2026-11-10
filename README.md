@@ -31,6 +31,13 @@ begin a session. The tour walks through it the first time.
 
 For a single-origin build: `pnpm build && pnpm start`, then http://127.0.0.1:8787.
 
+## Install it
+
+Mastery also ships as a desktop app for macOS and Windows: the same server and interface in an
+Electron shell, with your library and study record kept in your user folder.
+`pnpm desktop:dist` builds the installers; pushing a `v*` tag publishes them to GitHub Releases
+and the download page in `site/` offers the right one. See [docs/packaging.md](docs/packaging.md).
+
 ## Languages
 
 English, Simplified Chinese and Traditional Chinese, for both the interface and what the model
@@ -59,7 +66,8 @@ Every route is an environment variable; see `.env.example`. The prompts are plai
 ## Layout
 
 See [docs/architecture.md](docs/architecture.md). The graph's lighting rule is in
-[docs/graph-threshold.md](docs/graph-threshold.md).
+[docs/graph-threshold.md](docs/graph-threshold.md); the desktop build and release process in
+[docs/packaging.md](docs/packaging.md).
 
 ## Credits
 

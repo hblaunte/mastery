@@ -77,5 +77,12 @@ write the cache prefix; the rest fan out and read it.
 
 ## Deploying
 
-The server binds 127.0.0.1 and has no authentication: it is a personal, local tool as shipped.
-Putting it on a network means adding a login in front of it and moving `data/` somewhere durable.
+The server binds 127.0.0.1 and, in development, has no authentication: it is a personal, local
+tool as shipped. Putting it on a network means adding a login in front of it and moving `data/`
+somewhere durable.
+
+The desktop app (`apps/desktop`) runs this same server inside Electron on a random local port
+with a per-launch token (`MASTERY_TOKEN`, checked on every `/api` request), with `MASTERY_DATA_DIR`,
+`MASTERY_PROMPTS_DIR` and `MASTERY_WEB_DIST` pointed at the user's application folder and the
+bundle's resources. `startServer()` in `server.ts` is the entry both `pnpm start` and the shell
+use. See [packaging.md](packaging.md).

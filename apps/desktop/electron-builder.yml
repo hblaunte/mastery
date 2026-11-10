@@ -1,0 +1,65 @@
+# Packaging. Everything the app needs at runtime is already bundled by scripts/build.mjs, so the
+# package carries no node_modules: dist/main.cjs plus the three resource folders.
+appId: com.mastery.desktop
+productName: Mastery
+copyright: Copyright © 2026 Mastery
+artifactName: ${productName}-${version}-${os}-${arch}.${ext}
+directories:
+  output: release
+  buildResources: build
+files:
+  - dist/**
+  - package.json
+  - "!**/*.map"
+extraResources:
+  - from: resources
+    to: .
+    filter: ["**/*", "!**/*.map"]
+asar: true
+compression: normal
+npmRebuild: false
+nodeGypRebuild: false
+
+mac:
+  category: public.app-category.education
+  target:
+    - target: dmg
+      arch: [arm64, x64]
+    - target: zip
+      arch: [arm64, x64]
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+  # Notarization runs when APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD and APPLE_TEAM_ID are in the
+  # environment (CI secrets); without them the build is unsigned and stays local.
+  notarize: true
+  darkModeSupport: true
+dmg:
+  sign: false
+  contents:
+    - { x: 150, y: 190 }
+    - { x: 390, y: 190, type: link, path: /Applications }
+
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+  # Signing happens when WIN_CSC_LINK / WIN_CSC_KEY_PASSWORD are set (CI secrets).
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  perMachine: false
+  deleteAppDataOnUninstall: false
+  shortcutName: Mastery
+
+linux:
+  target: [AppImage]
+  category: Education
+  maintainer: Mastery
+
+publish:
+  provider: github
+  owner: hblaunte
+  repo: mastery
+  releaseType: release

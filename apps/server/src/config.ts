@@ -24,10 +24,24 @@ export function loadDotenv(file = path.join(REPO_ROOT, ".env")): void {
 }
 loadDotenv();
 
+/**
+ * Where things live. Each is overridable so the desktop shell can point the same server at the
+ * OS's per-user application folder and at the resources packed inside the app bundle.
+ */
 export const DATA_DIR = path.resolve(REPO_ROOT, process.env.MASTERY_DATA_DIR ?? "data");
-export const PROMPTS_DIR = path.join(REPO_ROOT, "prompts");
-export const WEB_DIST = path.join(REPO_ROOT, "apps", "web", "dist");
+export const PROMPTS_DIR = path.resolve(REPO_ROOT, process.env.MASTERY_PROMPTS_DIR ?? "prompts");
+export const WEB_DIST = path.resolve(REPO_ROOT, process.env.MASTERY_WEB_DIST ?? path.join("apps", "web", "dist"));
+/** Port 0 asks the OS for a free one; the desktop shell does this so it never collides. */
 export const PORT = Number(process.env.MASTERY_PORT ?? 8787);
+export const HOST = process.env.MASTERY_HOST ?? "127.0.0.1";
+
+/**
+ * A per-launch secret. When set, every /api request must carry it in the x-mastery-token header,
+ * so a web page open in another tab cannot drive the local server. The desktop shell mints one
+ * at launch and attaches it to its own window's requests; browsers running the dev build do not
+ * need one.
+ */
+export const TOKEN = process.env.MASTERY_TOKEN || null;
 
 /** A managed key the operator can offer. Never sent to the browser. */
 export const MANAGED_KEY = process.env.MASTERY_MANAGED_KEY || null;

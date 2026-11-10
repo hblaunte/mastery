@@ -6,18 +6,15 @@
   "type": "module",
   "scripts": {
     "dev": "pnpm -r --parallel --filter ./apps/* dev",
-    "build": "pnpm -r --filter ./packages/* --filter ./apps/* build",
+    "build": "pnpm -r --filter ./packages/* --filter @mastery/web --filter @mastery/server build",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
-    "start": "pnpm --filter @mastery/server start"
+    "start": "pnpm --filter @mastery/server start",
+    "desktop:dev": "pnpm --filter @mastery/desktop dev",
+    "desktop:dist": "pnpm --filter @mastery/desktop dist"
   },
   "devDependencies": {
     "typescript": "^5.7.0"
   },
-  "packageManager": "pnpm@11.12.0",
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "esbuild"
-    ]
-  }
+  "packageManager": "pnpm@11.12.0"
 }

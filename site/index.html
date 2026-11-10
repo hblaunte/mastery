@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<title>Mastery · Download</title>
+<meta name="description" content="Build your own course from your own sources, then be quizzed on it until you have mastered it. Runs on your Mac or PC with your own Anthropic API key.">
+<style>
+  :root { --bg:#0c0f14; --fg:#e8ebf1; --mute:#9aa3b5; --card:#141a24; --line:#232b3a; --accent:#8ef0d8; --accent-ink:#06211c; }
+  @media (prefers-color-scheme: light) { :root { --bg:#f3f1ec; --fg:#15181f; --mute:#5c6475; --card:#ffffff; --line:#e1ddd4; --accent:#0f8f78; --accent-ink:#ffffff; } }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif; -webkit-font-smoothing: antialiased; }
+  main { max-width: 760px; margin: 0 auto; padding: 56px 16px 80px; }
+  .mark { width:72px; height:72px; border-radius:18px; display:block; margin-bottom: 20px; }
+  h1 { font-size: 40px; line-height:1.1; margin: 0 0 12px; letter-spacing: -0.02em; }
+  .lede { font-size: 19px; color: var(--mute); margin: 0 0 32px; max-width: 58ch; }
+  .primary { display:inline-flex; align-items:center; gap:10px; background:var(--accent); color:var(--accent-ink); font-weight:600; padding: 14px 22px; border-radius: 14px; text-decoration:none; font-size: 17px; }
+  .primary small { font-weight:500; opacity:.8; }
+  .meta { color: var(--mute); font-size: 14px; margin: 12px 0 0; }
+  .others { margin-top: 40px; display:grid; gap: 10px; }
+  .others a { display:flex; justify-content:space-between; align-items:center; gap: 12px; padding: 14px 16px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; color: var(--fg); text-decoration:none; }
+  .others a span:last-child { color: var(--mute); font-size: 14px; white-space: nowrap; }
+  h2 { font-size: 15px; text-transform: uppercase; letter-spacing: .08em; color: var(--mute); margin: 40px 0 12px; }
+  .how { display:grid; gap: 10px; counter-reset: step; padding:0; margin:0; list-style:none; }
+  .how li { padding-left: 36px; position: relative; color: var(--mute); }
+  .how li::before { counter-increment: step; content: counter(step); position:absolute; left:0; top:1px; width: 24px; height:24px; border-radius: 50%; background: var(--card); border:1px solid var(--line); color: var(--fg); font-size: 13px; display:grid; place-items:center; }
+  .how li b { color: var(--fg); font-weight: 600; }
+  .note { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; color: var(--mute); font-size: 15px; }
+  .note b { color: var(--fg); }
+  footer { margin-top: 48px; color: var(--mute); font-size: 14px; }
+  footer a { color: inherit; }
+  #primary[hidden] { display:none; }
+</style>
+</head>
+<body>
+<main>
+  <svg class="mark" viewBox="100 100 824 824" aria-hidden="true"><defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1b2140"/><stop offset=".55" stop-color="#0f1426"/><stop offset="1" stop-color="#070a14"/></linearGradient><radialGradient id="g" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#8ef0d8" stop-opacity=".9"/><stop offset="1" stop-color="#5fd3c2" stop-opacity="0"/></radialGradient></defs><rect x="100" y="100" width="824" height="824" rx="186" fill="url(#bg)"/><g stroke="#9fb0d8" stroke-opacity=".35" stroke-width="10" stroke-linecap="round"><line x1="330" y1="660" x2="512" y2="420"/><line x1="694" y1="660" x2="512" y2="420"/><line x1="330" y1="660" x2="694" y2="660"/><line x1="512" y1="420" x2="512" y2="250"/></g><circle cx="330" cy="660" r="46" fill="#1c2340" stroke="#9fb0d8" stroke-opacity=".55" stroke-width="8"/><circle cx="694" cy="660" r="46" fill="#1c2340" stroke="#9fb0d8" stroke-opacity=".55" stroke-width="8"/><circle cx="512" cy="250" r="34" fill="#1c2340" stroke="#9fb0d8" stroke-opacity=".55" stroke-width="8"/><circle cx="512" cy="420" r="210" fill="url(#g)"/><circle cx="512" cy="420" r="74" fill="#8ef0d8"/></svg>
+  <h1>Mastery</h1>
+  <p class="lede">Drop in your own PDFs, slides and notes. Mastery turns them into a course and quizzes you on it, coming back to each idea until you can produce it from memory.</p>
+
+  <a id="primary" class="primary" href="#all" hidden><span id="primary-label">Download</span><small id="primary-sub"></small></a>
+  <p class="meta" id="meta">Looking up the latest version…</p>
+
+  <h2 id="all">All downloads</h2>
+  <div class="others" id="others"></div>
+
+  <h2>First launch</h2>
+  <div class="note" id="first-launch">
+    <p><b>Mac:</b> open the .dmg and drag Mastery to Applications. If macOS says the app cannot be checked, right-click it, choose <b>Open</b>, then <b>Open</b> again. That is only needed once.</p>
+    <p><b>Windows:</b> run the installer. If SmartScreen appears, click <b>More info</b>, then <b>Run anyway</b>.</p>
+  </div>
+
+  <h2>What you need</h2>
+  <ol class="how">
+    <li><b>An Anthropic API key.</b> Mastery calls Claude with your key, from your machine. You pay Anthropic directly for what you use; a course costs well under a dollar to build, a study session a few cents.</li>
+    <li><b>Something to learn from.</b> PDF, Word, PowerPoint, EPUB, Markdown or a web page. Scanned PDFs are transcribed on request.</li>
+    <li><b>Ten minutes a day.</b> The app tells you what is due. Everything you study stays on your computer.</li>
+  </ol>
+
+  <footer>Source and release notes on <a id="repo-link" href="https://github.com/hblaunte/mastery">GitHub</a>. Chinese interface (简体 / 繁體) included.</footer>
+</main>
+<script>
+(async () => {
+  const REPO = "hblaunte/mastery";
+  const meta = document.getElementById("meta"), others = document.getElementById("others");
+  const primary = document.getElementById("primary"), label = document.getElementById("primary-label"), sub = document.getElementById("primary-sub");
+  const KINDS = [
+    { test: /mac-arm64\.dmg$/, name: "Mac (Apple silicon)", key: "mac-arm" },
+    { test: /mac-x64\.dmg$/, name: "Mac (Intel)", key: "mac-intel" },
+    { test: /win-x64\.exe$/, name: "Windows (64-bit installer)", key: "win" },
+    { test: /\.AppImage$/, name: "Linux (AppImage)", key: "linux" },
+  ];
+  const mb = (n) => (n / 1048576).toFixed(0) + " MB";
+  try {
+    const r = await fetch(`https://api.github.com/repos/${REPO}/releases/latest`, { headers: { accept: "application/vnd.github+json" } });
+    if (!r.ok) throw new Error(r.status);
+    const rel = await r.json();
+    const found = [];
+    for (const a of rel.assets) { const k = KINDS.find((k) => k.test.test(a.name)); if (k) found.push({ ...k, url: a.browser_download_url, size: a.size }); }
+    if (!found.length) throw new Error("no installers");
+    const ua = navigator.userAgent, plat = (navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || "";
+    let want = /Win/i.test(plat) ? "win" : /Mac/i.test(plat) ? "mac-arm" : /Linux/i.test(plat) && !/Android/i.test(ua) ? "linux" : null;
+    const pick = found.find((f) => f.key === want) || found[0];
+    label.textContent = `Download for ${pick.name}`;
+    sub.textContent = `${rel.tag_name} · ${mb(pick.size)}`;
+    primary.href = pick.url; primary.hidden = false;
+    meta.textContent = `Version ${rel.tag_name.replace(/^v/, "")}, released ${new Date(rel.published_at).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })}.` + (pick.key === "mac-arm" ? " On an Intel Mac, choose the Intel build below." : "");
+    others.innerHTML = found.map((f) => `<a href="${f.url}"><span>${f.name}</span><span>${mb(f.size)}</span></a>`).join("");
+  } catch (e) {
+    meta.textContent = "No release is published yet.";
+    others.innerHTML = `<a href="https://github.com/${REPO}/releases"><span>See all releases on GitHub</span><span>→</span></a>`;
+  }
+})();
+</script>
+</body>
+</html>

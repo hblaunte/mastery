@@ -1,0 +1,31 @@
+{
+  "name": "@mastery/desktop",
+  "productName": "Mastery",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Build your own course from your own sources, then be quizzed on it until you have mastered it.",
+  "author": "Mastery",
+  "homepage": "https://github.com/hblaunte/mastery",
+  "main": "dist/main.cjs",
+  "scripts": {
+    "build:web": "pnpm --filter @mastery/web build",
+    "build": "pnpm run build:web && node scripts/build.mjs",
+    "dev": "pnpm run build && electron .",
+    "smoke": "pnpm run build && cross-env-shell MASTERY_SMOKE=release/smoke.png electron .",
+    "pack": "pnpm run build && electron-builder --dir",
+    "dist": "pnpm run build && electron-builder",
+    "dist:mac": "pnpm run build && electron-builder --mac",
+    "dist:win": "pnpm run build && electron-builder --win",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@mastery/server": "workspace:*",
+    "@types/node": "^22.0.0",
+    "cross-env": "^7.0.3",
+    "electron": "^45.2.3",
+    "electron-builder": "^26.18.0",
+    "electron-updater": "^6.8.11",
+    "esbuild": "^0.28.2",
+    "typescript": "^5.7.0"
+  }
+}

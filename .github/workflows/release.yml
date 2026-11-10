@@ -1,0 +1,43 @@
+# Build installers and publish them to a GitHub Release whenever a version tag is pushed.
+#   git tag v0.1.0 && git push origin v0.1.0
+# The tag must match apps/desktop/package.json "version" (electron-builder checks this).
+# Signing is optional: add the secrets below and the same workflow produces signed, notarized
+# builds; without them the installers are unsigned (see docs/packaging.md for what users see).
+name: release
+on:
+  push:
+    tags: ["v*"]
+permissions:
+  contents: write
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            target: --mac
+          - os: windows-latest
+            target: --win
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test
+      - run: pnpm --filter @mastery/desktop build
+      - name: Package and publish
+        run: pnpm --filter @mastery/desktop exec electron-builder ${{ matrix.target }} --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # macOS: Developer ID certificate (base64 .p12) and notarization credentials.
+          CSC_LINK: ${{ secrets.MAC_CERT_P12 }}
+          CSC_KEY_PASSWORD: ${{ secrets.MAC_CERT_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          # Windows: Authenticode certificate (base64 .pfx).
+          WIN_CSC_LINK: ${{ secrets.WIN_CERT_PFX }}
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CERT_PASSWORD }}

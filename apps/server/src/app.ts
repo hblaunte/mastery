@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { streamSSE } from "hono/streaming";
 import type { AppState, BuildCourseRequest, CourseSummary, Settings, Source, SubmitRequest } from "@mastery/shared";
-import { PROMPTS_DIR } from "./config.js";
+import { PROMPTS_DIR, TOKEN } from "./config.js";
 import { buildGraph } from "./graph.js";
 import { newId, nowIso } from "./ids.js";
 import { UrlError, chunkText, extractFile, extractUrl } from "./ingest/index.js";
@@ -19,6 +19,10 @@ import path from "node:path";
 export const app = new Hono();
 library.ensureLibrary();
 app.use("/api/*", cors({ origin: (o) => (o?.startsWith("http://localhost") || o?.startsWith("http://127.0.0.1") ? o : null) }));
+app.use("/api/*", async (c, next) => {
+  if (TOKEN && c.req.header("x-mastery-token") !== TOKEN) return c.json({ error: "This server only answers the app that started it." }, 401);
+  await next();
+});
 
 app.onError((err, c) => {
   if (err instanceof KeyError || err instanceof SessionError) return c.json({ error: err.message }, 400);

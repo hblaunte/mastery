@@ -1,5 +1,9 @@
 packages:
   - "apps/*"
   - "packages/*"
+# Packages allowed to run install scripts (esbuild and electron download their binaries;
+# electron-winstaller is pulled in by electron-builder and does not need to build).
 allowBuilds:
-  esbuild: set this to true or false
+  esbuild: true
+  electron: true
+  electron-winstaller: false
