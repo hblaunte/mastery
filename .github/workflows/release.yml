@@ -53,3 +53,14 @@ jobs:
         run: pnpm --filter @mastery/desktop exec electron-builder ${{ matrix.target }} --publish always
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  # electron-builder leaves the release as a draft while the two platform jobs upload into it.
+  # Once both have finished, publish it so the download page and the updater can see it.
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish the release
+        run: gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --draft=false --latest
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
