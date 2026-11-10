@@ -28,16 +28,28 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm test
       - run: pnpm --filter @mastery/desktop build
+      # Secrets that are not set arrive as empty strings, and electron-builder treats an empty
+      # CSC_LINK as a certificate path. Export only the credentials that exist.
+      - name: Signing credentials
+        shell: bash
+        env:
+          MAC_CERT_P12: ${{ secrets.MAC_CERT_P12 }}
+          MAC_CERT_PASSWORD: ${{ secrets.MAC_CERT_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          WIN_CERT_PFX: ${{ secrets.WIN_CERT_PFX }}
+          WIN_CERT_PASSWORD: ${{ secrets.WIN_CERT_PASSWORD }}
+        run: |
+          add() { if [ -n "$2" ]; then echo "$1=$2" >> "$GITHUB_ENV"; echo "$1: set"; else echo "$1: not set, skipping"; fi; }
+          add CSC_LINK "$MAC_CERT_P12"
+          add CSC_KEY_PASSWORD "$MAC_CERT_PASSWORD"
+          add APPLE_ID "$APPLE_ID"
+          add APPLE_APP_SPECIFIC_PASSWORD "$APPLE_APP_SPECIFIC_PASSWORD"
+          add APPLE_TEAM_ID "$APPLE_TEAM_ID"
+          add WIN_CSC_LINK "$WIN_CERT_PFX"
+          add WIN_CSC_KEY_PASSWORD "$WIN_CERT_PASSWORD"
       - name: Package and publish
         run: pnpm --filter @mastery/desktop exec electron-builder ${{ matrix.target }} --publish always
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # macOS: Developer ID certificate (base64 .p12) and notarization credentials.
-          CSC_LINK: ${{ secrets.MAC_CERT_P12 }}
-          CSC_KEY_PASSWORD: ${{ secrets.MAC_CERT_PASSWORD }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          # Windows: Authenticode certificate (base64 .pfx).
-          WIN_CSC_LINK: ${{ secrets.WIN_CERT_PFX }}
-          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CERT_PASSWORD }}
